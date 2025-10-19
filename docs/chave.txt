@@ -1,0 +1,8 @@
+{
+  "nome": "Lando Souza",
+  "email": "landosouza@email.com",
+  "senha": "123456",
+  "perfil": "admin"
+}
+
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwibm9tZSI6IkxhbmRvIFNvdXphIiwiZW1haWwiOiJsYW5kb3NvdXphQGVtYWlsLmNvbSIsInBlcmZpbCI6ImFkbWluIiwiaWF0IjoxNzYwODgxOTM0LCJleHAiOjE3NjA4ODU1MzR9.OfEjaDE5a0NdAVfj-7DVo2azmrA8k29CvFE8ADrotGg"
