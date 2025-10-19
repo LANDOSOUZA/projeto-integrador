@@ -1,3 +1,4 @@
+require('./database/mongoConexao');
 const express = require('express');
 const app = express();
 require('./database/conexao'); // Garante que o banco e a tabela sejam criados
