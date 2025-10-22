@@ -1,8 +1,8 @@
-{
-  "nome": "Lando Souza",
-  "email": "landosouza@email.com",
-  "senha": "123456",
-  "perfil": "admin"
-}
-
-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwibm9tZSI6IkxhbmRvIFNvdXphIiwiZW1haWwiOiJsYW5kb3NvdXphQGVtYWlsLmNvbSIsInBlcmZpbCI6ImFkbWluIiwiaWF0IjoxNzYwODgxOTM0LCJleHAiOjE3NjA4ODU1MzR9.OfEjaDE5a0NdAVfj-7DVo2azmrA8k29CvFE8ADrotGg"
+📋 Tabela de rotas testadas
+Nome	Email	Senha	Perfil	Método	URL	Descrição
+Regiane Souza	regianesouza@senai.com	123456	cliente	POST	/cliente/cadastrar	Cadastro de cliente padrão
+Lando Souza	landosouza@senai.com	123456	admin	POST	/cliente/cadastrar	Cadastro de administrador
+Regiane Souza	regianesouza@senai.com	123456	cliente	POST	/cliente/login	Login e geração de token JWT
+Lando Souza	landosouza@senai.com	123456	admin	POST	/cliente/login	Login e geração de token JWT
+—	—	—	cliente/admin	GET	/cliente/perfil	Visualização do perfil logado (com token)
+—	—	—	admin	GET	/cliente/todos	Listagem de todos os clientes (admin token)
