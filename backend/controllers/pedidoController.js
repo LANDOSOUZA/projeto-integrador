@@ -2,41 +2,67 @@ const db = require('../database/conexao');
 
 // 📦 Cadastrar novo pedido
 const cadastrarPedido = (req, res) => {
-  const { laranja = 0, uva = 0, abacaxi = 0 } = req.body;
   const clienteId = req.cliente.id;
+  const { laranja = 0, uva = 0, abacaxi = 0 } = req.body;
 
-  const total = laranja + uva + abacaxi;
+  // Garantir que os valores sejam inteiros positivos
+  const l = parseInt(laranja);
+  const u = parseInt(uva);
+  const a = parseInt(abacaxi);
+
+  const total = l + u + a;
 
   if (total < 1 || total > 3) {
-    return res.status(400).json({
-      mensagem: 'Você deve pedir entre 1 e 3 sucos por pedido.',
-    });
-  }
+  return res.status(400).json({ mensagem: 'Você deve pedir entre 1 e 3 sucos por pedido.' });
+}
 
-  const data = new Date().toISOString();
 
-  db.run(
-    `INSERT INTO pedidos (cliente_id, laranja, uva, abacaxi, data) VALUES (?, ?, ?, ?, ?)`,
-    [clienteId, laranja, uva, abacaxi, data],
-    function (err) {
-      if (err) {
-        console.error('Erro ao cadastrar pedido:', err.message);
-        return res.status(500).json({ mensagem: 'Erro ao cadastrar pedido' });
-      }
+  // Verificar estoque atual
+  db.get(`SELECT SUM(laranja) AS l, SUM(uva) AS u, SUM(abacaxi) AS a FROM pedidos`, [], (err, estoque) => {
+    if (err) {
+      console.error('Erro ao verificar estoque:', err.message);
+      return res.status(500).json({ mensagem: 'Erro ao verificar estoque' });
+    }
+
+    const estoqueAtual = {
+      laranja: estoque?.l || 0,
+      uva: estoque?.u || 0,
+      abacaxi: estoque?.a || 0
+    };
+
+    if (
+      estoqueAtual.laranja + l > 3 ||
+      estoqueAtual.uva + u > 3 ||
+      estoqueAtual.abacaxi + a > 3
+    ) {
+      return res.status(400).json({ mensagem: 'Estoque insuficiente para completar o pedido.' });
+    }
+
+    const data = new Date().toISOString();
+
+    db.run(
+      `INSERT INTO pedidos (cliente_id, laranja, uva, abacaxi, data) VALUES (?, ?, ?, ?, ?)`,
+      [clienteId, l, u, a, data],
+      function (err) {
+        if (err) {
+          console.error('Erro ao cadastrar pedido:', err.message);
+          return res.status(500).json({ mensagem: 'Erro ao cadastrar pedido' });
+        }
 
         return res.status(201).json({
           mensagem: 'Pedido cadastrado com sucesso',
           pedido: {
             id: this.lastID,
             cliente_id: clienteId,
-            laranja,
-            uva,
-            abacaxi,
+            laranja: l,
+            uva: u,
+            abacaxi: a,
             data,
           },
         });
       }
-  );
+    );
+  });
 };
 
 
