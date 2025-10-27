@@ -78,3 +78,5 @@ Este projeto é o backend de um sistema de pedidos de sucos, desenvolvido como p
 ## Autoria: Grupo 2 - Lando, Luiz, Leonardo, João Pedro e Murilo
 
 ## Melhorias futuras: Conexão com o MongoDB e/ou SQLite, além da criação do FrontEnd
+
+Hoje, 27/10/2025 - 5h54 - vamos iniciar o FrontEnd do sistema.
