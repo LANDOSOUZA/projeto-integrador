@@ -1,6 +1,8 @@
 {
-  "dependencies": {
-    "bcrypt": "^6.0.0",
-    "express": "^5.1.0"
+  "name": "projeto-integrador",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node index.js"
   }
 }

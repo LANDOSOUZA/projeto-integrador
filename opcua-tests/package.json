@@ -1,0 +1,15 @@
+{
+  "name": "opcua-tests",
+  "version": "1.0.0",
+  "description": "",
+  "main": "teste-opcua.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "node-opcua": "^2.157.0"
+  }
+}
