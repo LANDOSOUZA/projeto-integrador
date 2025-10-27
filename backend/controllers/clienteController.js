@@ -1,7 +1,6 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const Cliente = require('../models/Cliente');
-
 // 📌 Cadastro de cliente
 exports.cadastrarCliente = async (req, res) => {
   try {
@@ -20,22 +19,34 @@ exports.cadastrarCliente = async (req, res) => {
     // Criptografa a senha
     const hash = await bcrypt.hash(senha, 10);
 
-    // Cria cliente (status padrão = "USUARIO" se não informado)
+    // 🔢 Busca o último cliente pelo código e incrementa
+    const ultimo = await Cliente.findOne().sort({ codigo: -1 });
+    let proximoCodigo = 1;
+    if (ultimo && typeof ultimo.codigo === 'number' && !isNaN(ultimo.codigo)) {
+      proximoCodigo = ultimo.codigo + 1;
+    }
+
+    // Cria cliente (status padrão = "usuario" se não informado)
     const novoCliente = new Cliente({
+      codigo: proximoCodigo,
       nome,
       email,
       senha: hash,
-      status: status || undefined
+      status: status || 'usuario'
     });
 
     await novoCliente.save();
 
-    res.status(201).json({ mensagem: 'Cliente cadastrado com sucesso' });
+    res.status(201).json({ 
+      mensagem: 'Cliente cadastrado com sucesso',
+      codigo: novoCliente.codigo
+    });
   } catch (err) {
     console.error('Erro ao cadastrar cliente:', err.message);
     res.status(500).json({ mensagem: 'Erro interno ao cadastrar cliente' });
   }
 };
+
 
 // 🔐 Login de cliente
 exports.loginCliente = async (req, res) => {
@@ -56,8 +67,10 @@ exports.loginCliente = async (req, res) => {
       return res.status(401).json({ mensagem: 'Credenciais inválidas' });
     }
 
+    // Payload com status incluído
     const payload = {
       id: cliente._id,
+      codigo: cliente.codigo, // 👈 inclui o código no token também
       nome: cliente.nome,
       email: cliente.email,
       status: cliente.status
@@ -80,7 +93,8 @@ exports.loginCliente = async (req, res) => {
 // 📋 Listar todos os clientes cadastrados
 exports.listarClientes = async (req, res) => {
   try {
-    const clientes = await Cliente.find({}, '-senha'); // exclui o campo senha
+    // Exibe também o código, mas nunca a senha
+    const clientes = await Cliente.find({}, '-senha');
     res.status(200).json(clientes);
   } catch (err) {
     console.error('Erro ao buscar clientes:', err.message);

@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 
 const ClienteSchema = new mongoose.Schema({
+  codigo: { type: Number, unique: true }, // 👈 ID sequencial amigável
   nome: { type: String, required: true },
   email: { type: String, required: true, unique: true },
   senha: { type: String, required: true },
@@ -13,4 +14,3 @@ const ClienteSchema = new mongoose.Schema({
 });
 
 module.exports = mongoose.model('Cliente', ClienteSchema);
-
