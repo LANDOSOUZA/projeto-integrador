@@ -1,18 +1,23 @@
-require('./database/mongoConexao');
 const express = require('express');
 const app = express();
-require('./database/conexao'); // Garante que o banco e a tabela sejam criados
+const cors = require('cors');
 
-app.use(express.json()); // ← mover para cima
+// Middlewares
+app.use(cors());
+app.use(express.json());
 
-const clienteRoutes = require('./routes/cliente');
-const pedidoRoutes = require('./routes/pedido');
-const produtoRoutes = require('./routes/produto'); // ✅ nova linha
+// Conexão com MongoDB
+require('./database/mongoConexao');
 
-app.use('/cliente', clienteRoutes);
-app.use('/pedido', pedidoRoutes);
-app.use('/produto', produtoRoutes); // ✅ nova linha
+// Rotas
+const produtoRoutes = require('./routes/produto');
+app.use('/produto', produtoRoutes);
 
-app.listen(3000, () => {
-  console.log('Servidor rodando na porta 3000');
+const clienteRoutes = require('./routes/cliente');   // 👈 importa as rotas de cliente
+app.use('/cliente', clienteRoutes);                 // 👈 registra no Express
+
+// Porta
+const PORT = 3000;
+app.listen(PORT, () => {
+  console.log(`Servidor rodando na porta ${PORT}`);
 });

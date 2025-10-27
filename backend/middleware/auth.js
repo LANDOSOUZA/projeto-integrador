@@ -13,13 +13,8 @@ function autenticarToken(req, res, next) {
       return res.status(403).json({ mensagem: 'Token inválido ou expirado' });
     }
 
+    // 🔑 Agora req.cliente carrega o payload do token (com status)
     req.cliente = cliente;
-
-    // 🔒 Verifica se a rota exige perfil de administrador
-    const rotaEhAdmin = req.originalUrl.includes('/cliente/todos');
-    if (rotaEhAdmin && cliente.perfil !== 'admin') {
-      return res.status(403).json({ mensagem: 'Acesso restrito a administradores' });
-    }
 
     next();
   });

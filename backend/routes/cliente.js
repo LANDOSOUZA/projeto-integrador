@@ -12,18 +12,18 @@ router.post('/login', clienteController.loginCliente);
 
 // 🔒 Verificação de perfil do cliente logado (protegido)
 router.get('/perfil', autenticarToken, (req, res) => {
-  const { id, nome, email, perfil } = req.cliente;
+  const { id, nome, email, status } = req.cliente;
 
   res.status(200).json({
     mensagem: 'Perfil acessado com sucesso',
     clienteId: id,
     nome,
     email,
-    perfil
+    status
   });
 });
 
-// 📋 Listar todos os clientes cadastrados (protegido)
+// 📋 Listar todos os clientes cadastrados (somente ADMIN)
 router.get('/todos', autenticarToken, verificarAdmin, clienteController.listarClientes);
 
 module.exports = router;
