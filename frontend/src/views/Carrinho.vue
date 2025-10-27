@@ -1,53 +1,56 @@
 <template>
   <div class="p-6">
-    <h1>Carrinho</h1>
+    <h1>🛒 Meu Carrinho</h1>
 
-    <!-- Caso não tenha itens -->
-    <div v-if="carrinho.itens.length === 0">
-      <p>Seu carrinho está vazio.</p>
+    <div>
+      <p>Laranja: {{ carrinho.laranja }}</p>
+      <button @click="carrinho.laranja++">+</button>
+      <button @click="carrinho.laranja--" :disabled="carrinho.laranja <= 0">-</button>
     </div>
 
-    <!-- Lista de itens -->
-    <ul v-else>
-      <li
-        v-for="(item, index) in carrinho.itens"
-        :key="index"
-        style="margin-bottom: 1rem;"
-      >
-        {{ item.nome }} - R$ {{ item.preco }}
-      </li>
-    </ul>
-
-    <!-- Total e ações -->
-    <div v-if="carrinho.itens.length > 0" style="margin-top: 1rem;">
-      <strong>Total: R$ {{ total }}</strong>
-      <br />
-      <button @click="finalizarCompra" style="margin-top: 0.5rem;">
-        Finalizar Compra
-      </button>
-      <button @click="carrinho.limpar()" style="margin-left: 1rem;">
-        Limpar Carrinho
-      </button>
+    <div>
+      <p>Uva: {{ carrinho.uva }}</p>
+      <button @click="carrinho.uva++">+</button>
+      <button @click="carrinho.uva--" :disabled="carrinho.uva <= 0">-</button>
     </div>
+
+    <div>
+      <p>Abacaxi: {{ carrinho.abacaxi }}</p>
+      <button @click="carrinho.abacaxi++">+</button>
+      <button @click="carrinho.abacaxi--" :disabled="carrinho.abacaxi <= 0">-</button>
+    </div>
+
+    <button @click="finalizarCompra" style="margin-top:1rem;">
+      Finalizar compra
+    </button>
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
-import { useCarrinhoStore } from '../stores/carrinho'
-import { usePedidosStore } from '../stores/pedidos'
+import { ref } from 'vue'
+import axios from 'axios'
 
-const carrinho = useCarrinhoStore()
-const pedidosStore = usePedidosStore()
+const carrinho = ref({ laranja: 0, uva: 0, abacaxi: 0 })
 
-const total = computed(() =>
-  carrinho.itens.reduce((soma, item) => soma + item.preco, 0)
-)
+async function finalizarCompra() {
+  try {
+    const token = localStorage.getItem('token') // 🔹 pega o token salvo no login
+    const { data } = await axios.post(
+      'http://localhost:3000/pedidos',
+      { ...carrinho.value }, // 🔹 não precisa mais de clienteId
+      {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      }
+    )
 
-function finalizarCompra() {
-  if (carrinho.itens.length === 0) return
-  pedidosStore.adicionarPedido([...carrinho.itens]) // salva no histórico
-  alert('Compra finalizada! Pedido registrado.')
-  carrinho.limpar()
+    alert(`Pedido #${data._id} criado com sucesso!`)
+    carrinho.value = { laranja: 0, uva: 0, abacaxi: 0 }
+  } catch (err) {
+    alert(err.response?.data?.erro || 'Erro ao finalizar compra')
+    console.error(err)
+  }
 }
 </script>
+
