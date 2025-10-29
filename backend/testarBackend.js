@@ -53,6 +53,21 @@ async function loginCliente() {
   }
 }
 
+// 🔐 Login como administrador
+async function loginAdmin() {
+  try {
+    const res = await axios.post(`${baseURL}/cliente/login`, {
+      email: 'admin@admin.com',
+      senha: 'admin123'
+    });
+    console.log('🔐 Login admin bem-sucedido.');
+    return res.data.token;
+  } catch (err) {
+    console.error('⚠️ Erro no login admin:', err.response?.data || err.message);
+    return '';
+  }
+}
+
 // 3️⃣ Criar pedido
 async function criarPedido() {
   try {
@@ -126,6 +141,7 @@ async function excluirPedidosClienteAdmin(adminToken, codigo) {
   }
 }
 
+
 // 🚀 Executa os testes em sequência
 async function testarTudo() {
   await cadastrarCliente();
@@ -135,7 +151,7 @@ async function testarTudo() {
   await cancelarPedido();
   await historicoPedidos();
 
-  const adminToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4ZmY4MzQyMWE4MDU2MWE5NTk4NGM5YyIsImNvZGlnbyI6NCwibm9tZSI6IkFkbWluaXN0cmFkb3IiLCJlbWFpbCI6ImFkbWluQGFkbWluLmNvbSIsInN0YXR1cyI6ImFkbWluIiwiaWF0IjoxNzYxNTc1NzY1LCJleHAiOjE3NjE1NzkzNjV9.5nsbbLp4VNNtACXinQb2xe-ykM4uC2dZhNZAWu3RNhc";
+const adminToken = await loginAdmin();
 
   await listarTodosPedidosAdmin(adminToken);
   await excluirPedidosClienteAdmin(adminToken, 1);

@@ -67,35 +67,6 @@ const listarPedidos = async (req, res) => {
   }
 };
 
-// ❌ Cancelar pedido (agora aceita codigo do cliente)
-const cancelarPedido = async (req, res) => {
-  try {
-    const { codigo } = req.cliente; // vem do token
-    const pedidoId = req.params.id;
-
-    // Busca o cliente pelo código
-    const cliente = await Cliente.findOne({ codigo });
-    if (!cliente) {
-      return res.status(404).json({ mensagem: 'Cliente não encontrado' });
-    }
-
-    const pedido = await Pedido.findById(pedidoId);
-    if (!pedido) {
-      return res.status(404).json({ mensagem: 'Pedido não encontrado' });
-    }
-
-    if (pedido.clienteId.toString() !== cliente._id.toString()) {
-      return res.status(403).json({ mensagem: 'Você não tem permissão para cancelar este pedido' });
-    }
-
-    await Pedido.findByIdAndDelete(pedidoId);
-
-    res.status(200).json({ mensagem: `Pedido do cliente ${codigo} cancelado com sucesso` });
-  } catch (err) {
-    console.error('Erro ao cancelar pedido:', err.message);
-    res.status(500).json({ mensagem: 'Erro ao cancelar pedido' });
-  }
-};
 
 // 🛠️ Listar todos os pedidos (admin)
 const listarTodosPedidos = async (req, res) => {
@@ -211,12 +182,15 @@ const excluirPedidosPorCodigo = async (req, res) => {
 // 🧹 Limpar todos os pedidos (somente admin)
 const limparPedidos = async (req, res) => {
   try {
+    console.log(`🔧 Admin ${req.usuario?.email} requisitou limpeza de pedidos`);
+
     const resultado = await Pedido.deleteMany({});
     res.json({
       mensagem: "Todos os pedidos foram apagados",
       pedidosExcluidos: resultado.deletedCount
     });
   } catch (err) {
+    console.error("❌ Erro ao limpar pedidos:", err.message);
     res.status(500).json({
       mensagem: "Erro ao limpar pedidos",
       erro: err.message
@@ -224,12 +198,33 @@ const limparPedidos = async (req, res) => {
   }
 };
 
+
+const cancelarPedido = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const pedido = await Pedido.findById(id);
+    if (!pedido) {
+      return res.status(404).json({ mensagem: 'Pedido não encontrado' });
+    }
+
+    pedido.status = 'cancelado'; // ajuste conforme seu modelo
+    await pedido.save();
+
+    res.status(200).json({ mensagem: 'Pedido cancelado com sucesso', pedido });
+  } catch (err) {
+    res.status(500).json({ mensagem: 'Erro ao cancelar pedido', erro: err.message });
+  }
+};
+
+
+
 // ✅ Exportações
 module.exports = {
   cadastrarPedido,
   listarPedidos,
-  cancelarPedido,
   listarTodosPedidos,
+  cancelarPedido,
   historicoPedidos,
   gerarBalancete,
   excluirPedidosPorCodigo,
