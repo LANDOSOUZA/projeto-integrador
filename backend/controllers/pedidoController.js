@@ -191,13 +191,11 @@ const excluirPedidosPorCodigo = async (req, res) => {
   try {
     const { codigo } = req.params;
 
-    // Busca o cliente pelo código
     const cliente = await Cliente.findOne({ codigo });
     if (!cliente) {
       return res.status(404).json({ mensagem: 'Cliente não encontrado' });
     }
 
-    // Exclui todos os pedidos vinculados a esse cliente
     const resultado = await Pedido.deleteMany({ clienteId: cliente._id });
 
     res.status(200).json({
@@ -210,8 +208,8 @@ const excluirPedidosPorCodigo = async (req, res) => {
   }
 };
 
-// DELETE /pedido/limpar
-exports.limparPedidos = async (req, res) => {
+// 🧹 Limpar todos os pedidos (somente admin)
+const limparPedidos = async (req, res) => {
   try {
     const resultado = await Pedido.deleteMany({});
     res.json({
@@ -226,7 +224,7 @@ exports.limparPedidos = async (req, res) => {
   }
 };
 
-
+// ✅ Exportações
 module.exports = {
   cadastrarPedido,
   listarPedidos,
@@ -234,6 +232,6 @@ module.exports = {
   listarTodosPedidos,
   historicoPedidos,
   gerarBalancete,
-  excluirPedidosPorCodigo
+  excluirPedidosPorCodigo,
+  limparPedidos // ✅ incluído corretamente
 };
-

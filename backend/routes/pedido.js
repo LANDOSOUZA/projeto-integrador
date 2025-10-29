@@ -18,7 +18,6 @@ router.post('/', autenticarToken, pedidoController.cadastrarPedido);
 router.get('/', autenticarToken, pedidoController.listarPedidos);
 
 // ❌ Cancelar pedido do cliente logado
-// Aqui o :id continua sendo o _id do pedido, mas a verificação de dono é feita pelo codigo do cliente
 router.delete('/:id', autenticarToken, pedidoController.cancelarPedido);
 
 // ❌ Excluir todos os pedidos de um cliente pelo código (admin)
@@ -42,4 +41,3 @@ router.get('/balancete', autenticarToken, apenasAdmin, pedidoController.gerarBal
 router.delete('/limpar', autenticarToken, apenasAdmin, pedidoController.limparPedidos);
 
 module.exports = router;
-
