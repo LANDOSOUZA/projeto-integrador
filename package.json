@@ -7,6 +7,28 @@
   },
   "dependencies": {
     "axios": "^1.13.0",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "mongoose": "^8.19.2",
     "pinia": "^3.0.3"
+  },
+  "description": "Este projeto é o backend de um sistema de pedidos de sucos, desenvolvido como parte do Projeto Integrador.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LANDOSOUZA/projeto-integrador.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/LANDOSOUZA/projeto-integrador/issues"
+  },
+  "homepage": "https://github.com/LANDOSOUZA/projeto-integrador#readme",
+  "devDependencies": {
+    "nodemon": "^3.1.10"
   }
 }

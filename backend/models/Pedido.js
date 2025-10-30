@@ -5,6 +5,11 @@ const pedidoSchema = new mongoose.Schema({
   laranja: Number,
   uva: Number,
   abacaxi: Number,
+  status: {
+    type: String,
+    enum: ['iniciado', 'em_processamento', 'pronto', 'cancelado'],
+    default: 'iniciado'
+  },
   data: { type: Date, default: Date.now }
 });
 

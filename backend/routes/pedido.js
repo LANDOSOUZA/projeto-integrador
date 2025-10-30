@@ -17,6 +17,11 @@ router.post('/', autenticarToken, pedidoController.cadastrarPedido);
 // 📋 Listar pedidos do cliente logado
 router.get('/', autenticarToken, pedidoController.listarPedidos);
 
+router.post('/antecipar/:id', autenticarToken, apenasAdmin, pedidoController.anteciparPedido);
+
+// 🧹 Limpar todos os pedidos (somente admin)
+router.delete('/limpar', autenticarToken, apenasAdmin, pedidoController.limparPedidos);
+
 // ❌ Cancelar pedido do cliente logado
 router.delete('/:id', autenticarToken, pedidoController.cancelarPedido);
 
@@ -36,8 +41,5 @@ router.get('/admin/todos', autenticarToken, apenasAdmin, pedidoController.listar
 
 // 📊 Gerar balancete por período (somente admin)
 router.get('/balancete', autenticarToken, apenasAdmin, pedidoController.gerarBalancete);
-
-// 🧹 Limpar todos os pedidos (somente admin)
-router.delete('/limpar', autenticarToken, apenasAdmin, pedidoController.limparPedidos);
 
 module.exports = router;

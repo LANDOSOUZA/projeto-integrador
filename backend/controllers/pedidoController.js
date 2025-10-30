@@ -7,9 +7,10 @@ const cadastrarPedido = async (req, res) => {
     const clienteId = req.cliente.id; // vem do token
     const { laranja = 0, uva = 0, abacaxi = 0 } = req.body;
 
-    const l = parseInt(laranja);
-    const u = parseInt(uva);
-    const a = parseInt(abacaxi);
+    const l = parseInt(laranja) || 0;
+    const u = parseInt(uva) || 0;
+    const a = parseInt(abacaxi) || 0;
+
 
     const total = l + u + a;
 
@@ -217,6 +218,16 @@ const cancelarPedido = async (req, res) => {
   }
 };
 
+const anteciparPedido = async (req, res) => {
+  try {
+    const pedidoId = req.params.id;
+    return res.status(200).json({ mensagem: 'Pedido antecipado com sucesso', pedidoId });
+  } catch (err) {
+    return res.status(500).json({ mensagem: 'Erro ao antecipar pedido', erro: err.message });
+  }
+};
+
+
 
 
 // ✅ Exportações
@@ -228,5 +239,6 @@ module.exports = {
   historicoPedidos,
   gerarBalancete,
   excluirPedidosPorCodigo,
-  limparPedidos // ✅ incluído corretamente
+  limparPedidos, // ✅ incluído corretamente
+  anteciparPedido
 };
