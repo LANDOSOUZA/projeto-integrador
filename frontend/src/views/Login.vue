@@ -21,26 +21,31 @@
 
 <script setup>
 import { ref } from 'vue'
-import axios from 'axios'
 import { useRouter } from 'vue-router'
+import { useUserStore } from '../stores/user'
+import { api } from '../services/api'
 
 const email = ref('')
 const senha = ref('')
 const erro = ref('')
 const loading = ref(false)
 const router = useRouter()
+const userStore = useUserStore()
 
 async function login() {
   try {
     loading.value = true
-    const { data } = await axios.post('http://localhost:3000/login', {
+
+    const { data } = await api.post('/login', {
       email: email.value,
       senha: senha.value
     })
 
-    // 🔹 Salva token e usuário
+    // 🔹 Salva na store
+    userStore.setToken(data.token)
+    userStore.setUser(data.user)
     localStorage.setItem('token', data.token)
-    localStorage.setItem('user', JSON.stringify(data.user))
+
 
     // 🔹 Redireciona conforme perfil
     if (data.user.status === 'admin') {

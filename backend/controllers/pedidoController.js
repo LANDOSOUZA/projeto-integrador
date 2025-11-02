@@ -3,28 +3,50 @@ const Cliente = require('../models/Cliente');
 
 // 📦 Cadastrar novo pedido
 const cadastrarPedido = async (req, res) => {
+
+    console.log('🚀 Entrou em cadastrarPedido');
+    console.log('🔐 req.user:', req.user);
+
+
   try {
-    const clienteId = req.cliente.id; // vem do token
+    const { codigo } = req.user;
     const { laranja = 0, uva = 0, abacaxi = 0 } = req.body;
 
     const l = parseInt(laranja) || 0;
     const u = parseInt(uva) || 0;
     const a = parseInt(abacaxi) || 0;
-
-
     const total = l + u + a;
 
-    // ✅ Regra de negócio: entre 1 e 3 unidades por pedido
     if (total < 1 || total > 3) {
       return res.status(400).json({ mensagem: 'Você deve pedir entre 1 e 3 sucos por pedido.' });
     }
 
+    const cliente = await Cliente.findOne({ codigo });
+    if (!cliente) {
+      return res.status(404).json({ mensagem: 'Cliente não encontrado' });
+    }
+
     const novoPedido = new Pedido({
-      clienteId,
+      clienteId: cliente._id,
+      codigoCliente: cliente.codigo,
       laranja: l,
       uva: u,
       abacaxi: a
     });
+
+    console.log('📝 Pedido a salvar:', {
+      clienteId: cliente._id,
+      codigoCliente: cliente.codigo,
+      laranja: l,
+      uva: u,
+      abacaxi: a
+    });
+
+    console.log('👤 Cliente encontrado:', cliente);
+
+
+
+    await novoPedido.validate();
 
     await novoPedido.save();
 
@@ -33,18 +55,32 @@ const cadastrarPedido = async (req, res) => {
       pedido: novoPedido
     });
   } catch (err) {
-    console.error('Erro ao cadastrar pedido:', err.message);
-    res.status(500).json({ mensagem: 'Erro ao cadastrar pedido' });
+    console.error('❌ Erro ao cadastrar pedido:');
+    console.error(err);
+
+    res.status(500).json({ mensagem: 'Erro ao cadastrar pedido', erro: err.message });
+
   }
 };
 
-// 📋 Listar pedidos do cliente
 const listarPedidos = async (req, res) => {
   try {
-    const clienteId = req.cliente.id;
-    const { sabor, data } = req.query;
+    console.log('🔐 req.user:', req.user); // Verifica se o token está populando corretamente
 
-    const filtro = { clienteId };
+    const { codigo } = req.user;
+    console.log('🔎 Código do cliente:', codigo);
+
+    const { sabor, data } = req.query;
+    console.log('🔍 Query recebida:', req.query);
+
+    const cliente = await Cliente.findOne({ codigo });
+    console.log('👤 Cliente encontrado:', cliente);
+
+    if (!cliente) {
+      return res.status(404).json({ mensagem: 'Cliente não encontrado' });
+    }
+
+    const filtro = { clienteId: cliente._id };
 
     if (sabor && ['laranja', 'uva', 'abacaxi'].includes(sabor)) {
       filtro[sabor] = { $gt: 0 };
@@ -57,20 +93,26 @@ const listarPedidos = async (req, res) => {
       filtro.data = { $gte: inicio, $lt: fim };
     }
 
+    console.log('📋 Filtro aplicado:', filtro);
+
     const pedidos = await Pedido.find(filtro)
       .populate('clienteId', 'codigo nome email status')
       .sort({ data: -1 });
 
+    console.log('📦 Pedidos encontrados:', pedidos);
+
     res.status(200).json({ pedidos });
   } catch (err) {
-    console.error('Erro ao buscar pedidos:', err.message);
-    res.status(500).json({ mensagem: 'Erro ao buscar pedidos' });
+    console.error('❌ Erro ao buscar pedidos:');
+    console.error(err); // mostra o erro completo
+    res.status(500).json({ mensagem: 'Erro ao buscar pedidos', erro: err.message });
   }
 };
 
 
+
 // 🛠️ Listar todos os pedidos (admin)
-const listarTodosPedidos = async (req, res) => {
+const listarTodosPedidosAdmin = async (req, res) => {
   try {
     const pedidos = await Pedido.find()
       .populate('clienteId', 'codigo nome email status')
@@ -86,7 +128,7 @@ const listarTodosPedidos = async (req, res) => {
 // 🕓 Histórico de pedidos
 const historicoPedidos = async (req, res) => {
   try {
-    const { codigo } = req.cliente;
+    const { codigo } = req.user;
 
     const cliente = await Cliente.findOne({ codigo });
     if (!cliente) {
@@ -104,7 +146,7 @@ const historicoPedidos = async (req, res) => {
   }
 };
 
-// 📊 Gerar balancete (sem alteração)
+// 📊 Gerar balancete
 const gerarBalancete = async (req, res) => {
   try {
     const { periodo } = req.query;
@@ -158,7 +200,19 @@ function calcularDataInicial(periodo) {
   return `${String(data.getDate()).padStart(2, '0')}/${String(data.getMonth() + 1).padStart(2, '0')}/${data.getFullYear()}`;
 }
 
-// ❌ Excluir todos os pedidos de um cliente pelo código (somente admin)
+// 🗑️ Excluir pedidos de um cliente
+const excluirPedidosClienteAdmin = async (req, res) => {
+  try {
+    const { codigoCliente } = req.params;
+    const resultado = await Pedido.deleteMany({ codigoCliente });
+    res.status(200).json({ mensagem: 'Pedidos do cliente excluídos', resultado });
+  } catch (err) {
+    res.status(500).json({ mensagem: 'Erro ao excluir pedidos', erro: err.message });
+  }
+};
+
+
+// ❌ Excluir todos os pedidos de um cliente pelo código (admin)
 const excluirPedidosPorCodigo = async (req, res) => {
   try {
     const { codigo } = req.params;
@@ -180,36 +234,37 @@ const excluirPedidosPorCodigo = async (req, res) => {
   }
 };
 
-// 🧹 Limpar todos os pedidos (somente admin)
+// 🧹 Limpar todos os pedidos
 const limparPedidos = async (req, res) => {
   try {
-    console.log(`🔧 Admin ${req.usuario?.email} requisitou limpeza de pedidos`);
-
     const resultado = await Pedido.deleteMany({});
-    res.json({
-      mensagem: "Todos os pedidos foram apagados",
-      pedidosExcluidos: resultado.deletedCount
-    });
+    res.status(200).json({ mensagem: 'Todos os pedidos foram removidos', resultado });
   } catch (err) {
-    console.error("❌ Erro ao limpar pedidos:", err.message);
-    res.status(500).json({
-      mensagem: "Erro ao limpar pedidos",
-      erro: err.message
-    });
+    res.status(500).json({ mensagem: 'Erro ao limpar pedidos', erro: err.message });
   }
 };
 
-
+// ❌ Cancelar pedido
 const cancelarPedido = async (req, res) => {
   try {
     const { id } = req.params;
-
     const pedido = await Pedido.findById(id);
+
     if (!pedido) {
       return res.status(404).json({ mensagem: 'Pedido não encontrado' });
     }
 
-    pedido.status = 'cancelado'; // ajuste conforme seu modelo
+    // 🚫 Impede cancelar pedidos já finalizados
+    if (pedido.status === 'pronto') {
+      return res.status(400).json({ mensagem: 'Não é possível cancelar um pedido que já está pronto' });
+    }
+
+    // 🚫 Impede cancelar pedidos já cancelados
+    if (pedido.status === 'cancelado') {
+      return res.status(400).json({ mensagem: 'O pedido já está cancelado' });
+    }
+
+    pedido.status = 'cancelado';
     await pedido.save();
 
     res.status(200).json({ mensagem: 'Pedido cancelado com sucesso', pedido });
@@ -218,15 +273,40 @@ const cancelarPedido = async (req, res) => {
   }
 };
 
+
+// ⏩ Antecipar pedido
 const anteciparPedido = async (req, res) => {
   try {
-    const pedidoId = req.params.id;
-    return res.status(200).json({ mensagem: 'Pedido antecipado com sucesso', pedidoId });
+    const { id } = req.params;
+    const pedido = await Pedido.findById(id);
+
+    if (!pedido) {
+      return res.status(404).json({ mensagem: 'Pedido não encontrado' });
+    }
+
+    // 🚫 Impede antecipar pedidos cancelados
+    if (pedido.status === 'cancelado') {
+      return res.status(400).json({ mensagem: 'Não é possível antecipar um pedido cancelado' });
+    }
+
+    // 🚫 Impede antecipar pedidos já finalizados
+    if (pedido.status === 'pronto') {
+      return res.status(400).json({ mensagem: 'O pedido já está pronto e não pode ser antecipado' });
+    }
+
+    // Ciclo de status
+    if (pedido.status === 'iniciado') pedido.status = 'em_processamento';
+    else if (pedido.status === 'em_processamento') pedido.status = 'pronto';
+
+    await pedido.save();
+
+    console.log(`⏩ Pedido ${pedido._id} antecipado para status: ${pedido.status}`);
+
+    res.status(200).json({ mensagem: 'Pedido atualizado com sucesso', pedido });
   } catch (err) {
-    return res.status(500).json({ mensagem: 'Erro ao antecipar pedido', erro: err.message });
+    res.status(500).json({ mensagem: 'Erro ao atualizar pedido', erro: err.message });
   }
 };
-
 
 
 
@@ -234,11 +314,14 @@ const anteciparPedido = async (req, res) => {
 module.exports = {
   cadastrarPedido,
   listarPedidos,
-  listarTodosPedidos,
   cancelarPedido,
   historicoPedidos,
   gerarBalancete,
   excluirPedidosPorCodigo,
-  limparPedidos, // ✅ incluído corretamente
-  anteciparPedido
+  limparPedidos,  
+  anteciparPedido,
+  listarTodosPedidosAdmin,
+  anteciparPedido,
+  excluirPedidosClienteAdmin,
 };
+
