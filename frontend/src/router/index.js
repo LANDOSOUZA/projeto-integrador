@@ -12,6 +12,7 @@ const clienteRoutes = [
   { path: '/', name: 'Produtos', component: Produtos },
   { path: '/carrinho', name: 'Carrinho', component: Carrinho },
   { path: '/login', name: 'LoginCadastro', component: LoginCadastro },
+  { path: '/cadastro', name: 'Cadastro', component: () => import('../views/Cadastro.vue') },
   { path: '/meus-pedidos', name: 'MeusPedidos', component: MeusPedidos }
 ]
 

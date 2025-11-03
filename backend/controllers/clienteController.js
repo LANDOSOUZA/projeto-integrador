@@ -1,103 +1,116 @@
-const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
-const Cliente = require('../models/Cliente');
-// 📌 Cadastro de cliente
-exports.cadastrarCliente = async (req, res) => {
+const Cliente = require('../models/Cliente')
+const jwt = require('jsonwebtoken')
+
+// 🧾 Cadastrar novo cliente
+const cadastrarCliente = async (req, res) => {
   try {
-    const { nome, email, senha, status } = req.body;
+    const { nome, email, senha } = req.body
 
-    if (!email || !senha) {
-      return res.status(400).json({ mensagem: 'Email e senha são obrigatórios' });
+    if (!nome || !email || !senha) {
+      return res.status(400).json({ mensagem: 'Nome, e-mail e senha são obrigatórios' })
     }
 
-    // Verifica se já existe cliente com esse email
-    const existente = await Cliente.findOne({ email });
+    // Verifica se já existe cliente com esse e-mail
+    const existente = await Cliente.findOne({ email })
     if (existente) {
-      return res.status(409).json({ mensagem: 'Email já cadastrado' });
+      return res.status(400).json({ mensagem: 'Já existe um cliente com esse e-mail' })
     }
 
-    // Criptografa a senha
-    const hash = await bcrypt.hash(senha, 10);
+    // Gera código sequencial automaticamente
+    const ultimo = await Cliente.findOne().sort('-codigo')
+    const codigo = ultimo ? ultimo.codigo + 1 : 1
 
-    // 🔢 Busca o último cliente pelo código e incrementa
-    const ultimo = await Cliente.findOne().sort({ codigo: -1 });
-    let proximoCodigo = 1;
-    if (ultimo && typeof ultimo.codigo === 'number' && !isNaN(ultimo.codigo)) {
-      proximoCodigo = ultimo.codigo + 1;
-    }
-
-    // Cria cliente (status padrão = "usuario" se não informado)
     const novoCliente = new Cliente({
-      codigo: proximoCodigo,
+      codigo,
       nome,
       email,
-      senha: hash,
-      status: status || 'usuario'
-    });
+      senha,
+      status: 'usuario'
+    })
 
-    await novoCliente.save();
 
-    res.status(201).json({ 
+    await novoCliente.save()
+
+    res.status(201).json({
       mensagem: 'Cliente cadastrado com sucesso',
-      codigo: novoCliente.codigo
-    });
+      cliente: {
+        id: novoCliente._id,
+        codigo: novoCliente.codigo,
+        nome: novoCliente.nome,
+        email: novoCliente.email,
+        status: novoCliente.status
+      }
+    })
   } catch (err) {
-    console.error('Erro ao cadastrar cliente:', err.message);
-    res.status(500).json({ mensagem: 'Erro interno ao cadastrar cliente' });
+    console.error('❌ Erro ao cadastrar cliente:', err)
+    res.status(500).json({ mensagem: 'Erro ao cadastrar cliente', erro: err.message })
   }
-};
+}
 
-
-// 🔐 Login de cliente
-exports.loginCliente = async (req, res) => {
+// 🔐 Login do cliente (corrigido)
+const loginCliente = async (req, res) => {
   try {
-    const { email, senha } = req.body;
+    const { email, senha } = req.body
 
     if (!email || !senha) {
-      return res.status(400).json({ mensagem: 'Email e senha são obrigatórios' });
+      return res.status(400).json({ mensagem: 'E-mail e senha são obrigatórios' })
     }
 
-    const cliente = await Cliente.findOne({ email });
+    const cliente = await Cliente.findOne({ email })
     if (!cliente) {
-      return res.status(401).json({ mensagem: 'Credenciais inválidas' });
+      return res.status(404).json({ mensagem: 'Cliente não encontrado' })
     }
 
-    const senhaValida = await bcrypt.compare(senha, cliente.senha);
+    const senhaValida = await cliente.compararSenha(senha)
     if (!senhaValida) {
-      return res.status(401).json({ mensagem: 'Credenciais inválidas' });
+      return res.status(401).json({ mensagem: 'Senha inválida' })
     }
 
-    // Payload com status incluído
-    const payload = {
-      id: cliente._id,
-      codigo: cliente.codigo, // 👈 inclui o código no token também
-      nome: cliente.nome,
-      email: cliente.email,
-      status: cliente.status
-    };
+    // Gera token JWT com payload básico
+    const token = jwt.sign(
+      {
+        id: cliente._id,
+        codigo: cliente.codigo,
+        nome: cliente.nome,
+        email: cliente.email,
+        status: cliente.status
+      },
+      process.env.JWT_SECRET || 'segredo',
+      { expiresIn: '24h' }
+    )
 
-    const token = jwt.sign(payload, process.env.JWT_SECRET || 'segredo', {
-      expiresIn: '1h'
-    });
-
+    // 🔹 Agora retorna também os dados do cliente
     res.status(200).json({
-      mensagem: 'Login bem-sucedido',
-      token
-    });
+      mensagem: 'Login realizado com sucesso',
+      token,
+      cliente: {
+        id: cliente._id,
+        codigo: cliente.codigo,
+        nome: cliente.nome,
+        email: cliente.email,
+        status: cliente.status
+      }
+    })
   } catch (err) {
-    console.error('Erro no login:', err.message);
-    res.status(500).json({ mensagem: 'Erro interno ao fazer login' });
+    console.error('❌ Erro no login:', err)
+    res.status(500).json({ mensagem: 'Erro ao realizar login', erro: err.message })
   }
-};
+}
 
-// 📋 Listar todos os clientes cadastrados
-exports.listarClientes = async (req, res) => {
+
+// 📋 Listar todos os clientes (apenas admin)
+const listarClientes = async (req, res) => {
   try {
-    // Exibe também o código, mas nunca a senha
-    const clientes = await Cliente.find({}, '-senha');
-    res.status(200).json(clientes);
+    const clientes = await Cliente.find().select('-senha').sort({ codigo: 1 })
+    res.status(200).json({ clientes })
   } catch (err) {
-    console.error('Erro ao buscar clientes:', err.message);
-    res.status(500).json({ mensagem: 'Erro ao buscar clientes' });
+    console.error('❌ Erro ao listar clientes:', err)
+    res.status(500).json({ mensagem: 'Erro ao listar clientes', erro: err.message })
   }
-};
+}
+
+module.exports = {
+  cadastrarCliente,
+  loginCliente,
+  listarClientes
+}

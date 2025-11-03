@@ -26,7 +26,9 @@
           <td class="p-2 border">{{ pedido.clienteId?.nome }}</td>
           <td class="p-2 border">{{ pedido.codigoCliente }}</td>
           <td class="p-2 border">
-            🍊 {{ pedido.laranja }} | 🍇 {{ pedido.uva }} | 🍍 {{ pedido.abacaxi }}
+            <span v-for="item in pedido.itens" :key="item._id" class="mr-2">
+              {{ getEmoji(item.produtoId?.nome) }} {{ item.quantidade }}
+            </span>
           </td>
           <td class="p-2 border">{{ pedido.status }}</td>
           <td class="p-2 border flex gap-2">
@@ -69,68 +71,61 @@ const logs = ref([])
 const erro = ref('')
 const userStore = useUserStore()
 
-// 🔑 Headers com token
 function authHeaders() {
   return {
     headers: { Authorization: `Bearer ${userStore.token}` }
   }
 }
 
-// 📋 Carregar todos os pedidos (admin)
 async function carregarPedidos() {
   try {
     const { data } = await api.get('/pedido/admin', authHeaders())
     pedidos.value = data.pedidos
-    console.log('📋 Pedidos carregados:', data.pedidos)
     logs.value.push(`Carregados ${data.pedidos.length} pedidos`)
   } catch (err) {
     erro.value = err.response?.data?.mensagem || 'Erro ao carregar pedidos'
-    console.error('❌ Erro ao carregar pedidos:', err)
   }
 }
 
-// ⏩ Antecipar pedido
 async function anteciparPedido(id) {
   try {
     const { data } = await api.put(`/pedido/admin/antecipar/${id}`, {}, authHeaders())
-    console.log(`⏩ Pedido ${id} antecipado para:`, data.pedido.status)
     logs.value.push(`Pedido ${id} antecipado para "${data.pedido.status}"`)
     carregarPedidos()
   } catch (err) {
-    const msg = err.response?.data?.mensagem || 'Erro ao antecipar pedido'
-    console.error('⚠️ Erro ao antecipar pedido:', msg)
-    logs.value.push(`Erro ao antecipar pedido ${id}: ${msg}`)
+    logs.value.push(`Erro ao antecipar pedido ${id}`)
   }
 }
 
-// 🗑️ Excluir pedidos de um cliente
 async function excluirPedidosCliente(codigoCliente) {
   if (!confirm('Tem certeza que deseja excluir todos os pedidos deste cliente?')) return
   try {
-    const { data } = await api.delete(`/pedido/admin/excluir/${codigoCliente}`, authHeaders())
-    console.log(`🗑️ Pedidos do cliente ${codigoCliente} excluídos`)
+    await api.delete(`/pedido/admin/excluir/${codigoCliente}`, authHeaders())
     logs.value.push(`Pedidos do cliente ${codigoCliente} excluídos`)
     carregarPedidos()
   } catch (err) {
-    const msg = err.response?.data?.mensagem || 'Erro ao excluir pedidos do cliente'
-    console.error('❌ Erro ao excluir pedidos do cliente:', msg)
-    logs.value.push(`Erro ao excluir pedidos do cliente ${codigoCliente}: ${msg}`)
+    logs.value.push(`Erro ao excluir pedidos do cliente ${codigoCliente}`)
   }
 }
 
-// 🧹 Limpar todos os pedidos
 async function limparPedidos() {
   if (!confirm('Tem certeza que deseja limpar TODOS os pedidos?')) return
   try {
-    const { data } = await api.delete('/pedido/admin/limpar', authHeaders())
-    console.log('🧹 Todos os pedidos removidos')
+    await api.delete('/pedido/admin/limpar', authHeaders())
     logs.value.push('Todos os pedidos foram removidos')
     carregarPedidos()
   } catch (err) {
-    const msg = err.response?.data?.mensagem || 'Erro ao limpar pedidos'
-    console.error('❌ Erro ao limpar pedidos:', msg)
-    logs.value.push(`Erro ao limpar pedidos: ${msg}`)
+    logs.value.push('Erro ao limpar pedidos')
   }
+}
+
+function getEmoji(nomeProduto) {
+  const mapa = {
+    laranja: '🍊',
+    uva: '🍇',
+    abacaxi: '🍍'
+  }
+  return mapa[nomeProduto] || '🥤'
 }
 
 onMounted(() => {

@@ -1,58 +1,49 @@
-const express = require('express');
-const app = express();
-const cors = require('cors');
-const mongoose = require('mongoose');
-const Produto = require('./models/produto'); // 👈 Importa o modelo
+// server.js
+require('dotenv').config()
+const express = require('express')
+const mongoose = require('mongoose')
+const cors = require('cors')
 
 // Middlewares
-app.use(cors());
-app.use(express.json());
-
-// Conexão com MongoDB
-require('dotenv').config(); // caso use .env
-const MONGO_URL = process.env.MONGO_URL || 'mongodb://localhost:27017/projeto_integrador';
-
-// 🔁 Função para garantir os produtos base
-async function garantirProdutosBase() {
-  const nomesBase = ['Suco de Laranja', 'Suco de Uva', 'Suco de Abacaxi'];
-  const existentes = await Produto.find({ nome: { $in: nomesBase } });
-
-  if (existentes.length < nomesBase.length) {
-    const faltantes = nomesBase.filter(nome => !existentes.some(p => p.nome === nome));
-    const novos = faltantes.map((nome, index) => ({
-      idProduto: index + 1,
-      nome,
-      preco: 12.00,
-      embalagem: '500 ml',
-      status: 'iniciado'
-    }));
-
-    await Produto.insertMany(novos);
-    console.log('✅ Produtos base restaurados:', faltantes);
-  }
-}
+const autenticarToken = require('./middleware/auth')
+const verificarAdmin = require('./middleware/verificarAdmin')
 
 // Rotas
-const produtoRoutes = require('./routes/produto');
-app.use('/produto', produtoRoutes);
+const clienteRoutes = require('./routes/cliente')
+const produtoRoutes = require('./routes/produto')
+const pedidoRoutes = require('./routes/pedido')
 
-const clienteRoutes = require('./routes/cliente');
-app.use('/cliente', clienteRoutes);
+// Função para restaurar produtos base
+const garantirProdutosBase = require('./utils/garantirProdutosBase')
 
-const pedidoRoutes = require('./routes/pedido');
-app.use('/pedido', pedidoRoutes);
+const app = express()
+const PORT = process.env.PORT || 3000
+const MONGO_URL = process.env.MONGO_URL
 
-// Porta
-const PORT = 3000;
+// Middlewares globais
+app.use(cors())
+app.use(express.json())
 
-// 🔌 Conecta ao MongoDB e inicia servidor
+// Rotas públicas
+app.use('/cliente', clienteRoutes)
+app.use('/produto', produtoRoutes)
+
+// Rotas protegidas (exigem login)
+app.use('/pedido', autenticarToken, pedidoRoutes)
+
+
+// Exemplo de rota admin protegida
+app.get('/admin/teste', autenticarToken, verificarAdmin, (req, res) => {
+  res.json({ mensagem: 'Acesso permitido apenas para admin' })
+})
+
+// Conexão com MongoDB e inicialização do servidor
 mongoose.connect(MONGO_URL, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(async () => {
-    console.log('📦 Conectado ao MongoDB');
-    await garantirProdutosBase(); // 👈 Restaura os produtos fixos
+    console.log('📦 Conectado ao MongoDB')
+    await garantirProdutosBase() // restaura produtos fixos
     app.listen(PORT, () => {
-      console.log(`🚀 Servidor rodando na porta ${PORT}`);
-    });
+      console.log(`🚀 Servidor rodando na porta ${PORT}`)
+    })
   })
-  .catch(err => console.error('❌ Erro ao conectar ao MongoDB:', err));
-
+  .catch(err => console.error('❌ Erro ao conectar ao MongoDB:', err))

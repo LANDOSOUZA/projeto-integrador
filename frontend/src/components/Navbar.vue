@@ -3,20 +3,24 @@
     <RouterLink to="/" class="nav-link">🛍️ Loja</RouterLink>
     <RouterLink to="/carrinho" class="nav-link">🛒 Meu Carrinho</RouterLink>
     <RouterLink to="/meus-pedidos" class="nav-link">📦 Meus Pedidos</RouterLink>
-    <RouterLink to="/login" class="nav-link">🔑 Entrar / Cadastrar</RouterLink>
+    <RouterLink to="/login" class="nav-link" v-if="!isAuthenticated">🔑 Entrar / Cadastrar</RouterLink>
     <RouterLink to="/admin" class="nav-link" v-if="isAdmin">⚙️ Administração</RouterLink>
+    <button v-if="isAuthenticated" @click="logout" class="nav-link">🚪 Sair</button>
   </nav>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { computed } from 'vue'
+import { useUserStore } from '../stores/user'
 
-const isAdmin = ref(false)
+const userStore = useUserStore()
 
-onMounted(() => {
-  // Verifica se há token de admin no localStorage
-  isAdmin.value = !!localStorage.getItem('adminToken')
-})
+const isAuthenticated = computed(() => userStore.isAuthenticated)
+const isAdmin = computed(() => userStore.user?.status === 'admin')
+
+function logout() {
+  userStore.logout()
+}
 </script>
 
 <style scoped>
@@ -32,6 +36,7 @@ onMounted(() => {
   margin-right: 1rem;
   color: white;
   text-decoration: none;
+  cursor: pointer;
 }
 
 .nav-link.router-link-active,

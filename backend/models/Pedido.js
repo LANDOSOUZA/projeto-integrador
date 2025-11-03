@@ -1,29 +1,31 @@
-const mongoose = require('mongoose'); // 👈 importa o mongoose
+const mongoose = require('mongoose')
 
 const pedidoSchema = new mongoose.Schema({
   clienteId: { 
     type: mongoose.Schema.Types.ObjectId, 
     ref: 'Cliente', 
     required: true 
-  }, // referência ao cliente
+  }, // referência ao cliente no banco
 
   codigoCliente: { 
     type: Number, 
     required: true 
-  }, // número sequencial para facilitar CRUD do admin
+  }, // número sequencial do cliente
 
-  laranja: { 
-    type: Number, 
-    default: 0 
-  },
-  uva: { 
-    type: Number, 
-    default: 0 
-  },
-  abacaxi: { 
-    type: Number, 
-    default: 0 
-  },
+  itens: [
+    {
+      produtoId: { 
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: 'Produto', 
+        required: true 
+      }, // referência ao produto no catálogo
+      quantidade: { 
+        type: Number, 
+        required: true, 
+        min: [1, 'Quantidade deve ser pelo menos 1'] 
+      }
+    }
+  ],
 
   status: {
     type: String,
@@ -35,6 +37,12 @@ const pedidoSchema = new mongoose.Schema({
     type: Date, 
     default: Date.now 
   }
-});
+}, { 
+  timestamps: true // cria automaticamente createdAt e updatedAt
+})
 
-module.exports = mongoose.model('Pedido', pedidoSchema); // 👈 exporta o model
+// Índices úteis para performance em consultas
+pedidoSchema.index({ codigoCliente: 1 })
+pedidoSchema.index({ data: -1 })
+
+module.exports = mongoose.model('Pedido', pedidoSchema)

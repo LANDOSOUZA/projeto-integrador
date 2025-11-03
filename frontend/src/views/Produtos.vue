@@ -16,15 +16,25 @@
           – Preço não disponível
         </span>
 
-        <p>{{ produto.descricao || 'Sem descrição.' }}</p>
+        <!-- Exibe código amigável -->
+        <p>Código: {{ produto.codigo }}</p>
+
+        <!-- Exibe quantidade apenas se for relevante -->
+        <p v-if="produto.quantidade > 0">Disponível: {{ produto.quantidade }}</p>
 
         <button
           @click="adicionarAoCarrinho(produto)"
-          :disabled="carrinho.totalQuantidade >= 3"
+          :disabled="carrinho.totalQuantidade >= 3 || produto.status !== 'ativo'"
           class="mt-2 px-3 py-1 rounded text-white"
-          :class="carrinho.totalQuantidade >= 3 ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'"
+          :class="carrinho.totalQuantidade >= 3 || produto.status !== 'ativo'
+            ? 'bg-gray-400 cursor-not-allowed'
+            : 'bg-blue-600 hover:bg-blue-700'"
         >
-          {{ carrinho.totalQuantidade >= 3 ? 'Limite atingido' : 'Adicionar ao carrinho' }}
+          {{ carrinho.totalQuantidade >= 3
+            ? 'Limite atingido'
+            : produto.status !== 'ativo'
+              ? 'Indisponível'
+              : 'Adicionar ao carrinho' }}
         </button>
       </li>
     </ul>
@@ -46,7 +56,8 @@ const produtos = ref([])
 onMounted(async () => {
   try {
     const { data } = await api.get('/produto')
-    produtos.value = data.produtos
+    // Filtra apenas produtos ativos
+    produtos.value = (data.produtos || []).filter(p => p.status === 'ativo')
     console.log('📦 Produtos carregados:', produtos.value)
   } catch (err) {
     console.error('Erro ao carregar produtos', err)
@@ -54,7 +65,7 @@ onMounted(async () => {
 })
 
 function adicionarAoCarrinho(produto) {
-  if (carrinho.totalQuantidade < 3) {
+  if (carrinho.totalQuantidade < 3 && produto.status === 'ativo') {
     carrinho.adicionar(produto)
     console.log(`✅ ${produto.nome} adicionado ao carrinho`)
   }

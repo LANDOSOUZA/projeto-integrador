@@ -8,12 +8,14 @@
         :key="pedido._id"
         class="mb-4 border-b pb-4"
       >
-        <strong>Pedido #{{ pedido._id }}</strong>
+        <strong>Pedido #{{ pedido.codigoCliente }}</strong>
+
         <p>
-          🍊 {{ pedido.laranja || 0 }} |
-          🍇 {{ pedido.uva || 0 }} |
-          🍍 {{ pedido.abacaxi || 0 }}
+          🍊 {{ getQuantidade(pedido, 'laranja') }} |
+          🍇 {{ getQuantidade(pedido, 'uva') }} |
+          🍍 {{ getQuantidade(pedido, 'abacaxi') }}
         </p>
+
         <p>Data: {{ formatarData(pedido.data) }}</p>
         <p>Status: {{ formatarStatus(pedido.status) }}</p>
 
@@ -56,8 +58,8 @@ function authHeaders() {
 // 📋 Carregar pedidos do cliente
 async function carregarPedidos() {
   try {
-    const { data } = await api.get('/pedidos', authHeaders())
-    pedidos.value = data.pedidos || data
+    const { data } = await api.get('/pedido', authHeaders())
+    pedidos.value = data.pedidos || []
     console.log('📋 Pedidos carregados:', pedidos.value)
   } catch (err) {
     console.error('Erro ao carregar pedidos', err)
@@ -67,14 +69,23 @@ async function carregarPedidos() {
 // ❌ Cancelar pedido
 async function cancelarPedido(pedido) {
   try {
-    const { data } = await api.put(`/pedido/cancelar/${pedido._id}`, {}, authHeaders())
+    const { data } = await api.delete(`/pedido/${pedido._id}`, authHeaders())
     pedido.status = 'cancelado'
-    logs.value.push(`Pedido #${pedido._id} foi cancelado`)
+    logs.value.push(`Pedido #${pedido.codigoCliente} foi cancelado`)
     alert(data.mensagem)
   } catch (err) {
     console.error('Erro ao cancelar pedido', err)
     alert(err.response?.data?.mensagem || 'Erro ao cancelar pedido')
   }
+}
+
+// 🔎 Helper para buscar quantidade de cada produto
+function getQuantidade(pedido, nomeProduto) {
+  // Se o backend popular produtoId com { nome: 'laranja' }, usamos produtoId.nome
+  const item = pedido.itens.find(i =>
+    i.produtoId?.nome === nomeProduto || i.produtoId === nomeProduto
+  )
+  return item ? item.quantidade : 0
 }
 
 function formatarData(data) {
