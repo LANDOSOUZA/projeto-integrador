@@ -1,5 +1,7 @@
 const Pedido = require('../models/Pedido')
 const Cliente = require('../models/Cliente')
+const Produto = require('../models/Produto')
+
 
 // 📦 Cadastrar pedido (cliente logado)
 const cadastrarPedido = async (req, res) => {
@@ -42,13 +44,29 @@ const cadastrarPedido = async (req, res) => {
       return res.status(400).json({ mensagem: 'Combinação de sucos inválida' })
     }
 
+    const itensConvertidos = []
+
+      for (const item of itens) {
+        const produto = await Produto.findOne({ id: item.produtoId }) // busca pelo id fixo
+        if (!produto) {
+          return res.status(400).json({ mensagem: `Produto ${item.produtoId} não encontrado` })
+        }
+
+        itensConvertidos.push({
+          produtoId: produto._id, // usa o _id do Mongo para salvar
+          quantidade: item.quantidade
+        })
+    }
+
+
     const novoPedido = new Pedido({
       clienteId: cliente._id,
       codigoCliente: cliente.codigo,
-      itens,
+      itens: itensConvertidos, // ✅ agora sim com produtoId como ObjectId
       status: 'iniciado',
       data: new Date()
-    })
+})
+
 
     await novoPedido.save()
 
@@ -64,8 +82,6 @@ const cadastrarPedido = async (req, res) => {
     res.status(500).json({ mensagem: 'Erro ao cadastrar pedido', erro: err.message })
   }
 }
-
-
 
 // 📋 Listar pedidos do cliente logado
 const listarPedidos = async (req, res) => {

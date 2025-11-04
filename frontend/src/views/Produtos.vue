@@ -1,34 +1,28 @@
 <template>
-  <div class="p-6">
-    <h1 class="text-2xl font-bold mb-4">🥤 Produtos</h1>
+  <div class="bg-[#F2F2F2] min-h-screen p-6">
+    <h1 class="text-2xl font-bold mb-4 text-[#005CA9]">🥤 Produtos</h1>
 
-    <ul>
-      <li
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+      <div
         v-for="produto in produtos"
         :key="produto._id"
-        class="mb-4 border-b pb-4"
+        class="bg-white p-4 rounded shadow"
       >
-        <strong>{{ produto.nome }}</strong>
+        <strong class="text-lg text-[#005CA9]">{{ produto.nome }}</strong>
         <span v-if="typeof produto.preco === 'number'">
           – R$ {{ produto.preco.toFixed(2) }}
         </span>
-        <span v-else>
-          – Preço não disponível
-        </span>
-
-        <!-- Exibe código amigável -->
-        <p>Código: {{ produto.codigo }}</p>
-
-        <!-- Exibe quantidade apenas se for relevante -->
+        <p class="mt-2">{{ produto.descricao }}</p>
+        <p><strong>Peso líquido:</strong> {{ produto.peso }}</p>
         <p v-if="produto.quantidade > 0">Disponível: {{ produto.quantidade }}</p>
 
         <button
           @click="adicionarAoCarrinho(produto)"
           :disabled="carrinho.totalQuantidade >= 3 || produto.status !== 'ativo'"
-          class="mt-2 px-3 py-1 rounded text-white"
+          class="mt-4 px-3 py-2 rounded text-white w-full"
           :class="carrinho.totalQuantidade >= 3 || produto.status !== 'ativo'
             ? 'bg-gray-400 cursor-not-allowed'
-            : 'bg-blue-600 hover:bg-blue-700'"
+            : 'bg-[#005CA9] hover:bg-[#0074C7]'"
         >
           {{ carrinho.totalQuantidade >= 3
             ? 'Limite atingido'
@@ -36,14 +30,11 @@
               ? 'Indisponível'
               : 'Adicionar ao carrinho' }}
         </button>
-      </li>
-    </ul>
-
-    <p v-if="carrinho.totalQuantidade >= 3" class="text-red-600 mt-4">
-      ⚠️ Limite de 3 itens por pedido atingido.
-    </p>
+      </div>
+    </div>
   </div>
 </template>
+
 
 <script setup>
 import { ref, onMounted } from 'vue'
@@ -66,8 +57,14 @@ onMounted(async () => {
 
 function adicionarAoCarrinho(produto) {
   if (carrinho.totalQuantidade < 3 && produto.status === 'ativo') {
-    carrinho.adicionar(produto)
+    carrinho.adicionar({
+      id: produto.id,          // 👈 garante que o id fixo (1, 2, 3) vai junto
+      nome: produto.nome,
+      preco: produto.preco,
+      quantidade: 1
+    })
     console.log(`✅ ${produto.nome} adicionado ao carrinho`)
   }
 }
+
 </script>
