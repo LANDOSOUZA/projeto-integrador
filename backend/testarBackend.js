@@ -1,13 +1,28 @@
 require('dotenv').config()
 
 const API_URL = 'http://localhost:3000'
-const tokenAdmin = process.env.ADMIN_TOKEN
 
 async function testarFluxo() {
   try {
-    console.log("🔐 Token admin presente?", !!tokenAdmin)
+    // 1. Login do admin fixo
+    const loginAdminResp = await fetch(`${API_URL}/cliente/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: "landosouza@sucos.com",
+        senha: "@L11Lando02025"
+      })
+    })
+    const loginAdmin = await loginAdminResp.json()
+    console.log("👑 Login admin:", loginAdmin)
 
-    // 1. Cadastrar cliente
+    const tokenAdmin = loginAdmin.token
+    if (!tokenAdmin) {
+      console.error("❌ Não foi possível obter token admin")
+      return
+    }
+
+    // 2. Cadastrar cliente normal
     const cadastroResp = await fetch(`${API_URL}/cliente/cadastrar`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -20,7 +35,7 @@ async function testarFluxo() {
     const cadastro = await cadastroResp.json()
     console.log("🆕 Cadastro:", cadastro)
 
-    // 2. Login do cliente
+    // 3. Login do cliente
     const loginResp = await fetch(`${API_URL}/cliente/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -30,11 +45,11 @@ async function testarFluxo() {
       })
     })
     const login = await loginResp.json()
-    console.log("🔑 Login:", login)
+    console.log("🔑 Login cliente:", login)
 
     const tokenCliente = login.token
 
-    // 3. Listar produtos
+    // 4. Listar produtos
     const produtosResp = await fetch(`${API_URL}/produto`)
     const produtos = await produtosResp.json()
     console.log("🛍️ Produtos:", produtos)
@@ -45,7 +60,7 @@ async function testarFluxo() {
       return
     }
 
-    // 4. Criar pedido
+    // 5. Criar pedido
     const pedidoResp = await fetch(`${API_URL}/pedido`, {
       method: 'POST',
       headers: {
@@ -53,7 +68,7 @@ async function testarFluxo() {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        itens: [{ produtoId: primeiroProduto._id, quantidade: 1 }]
+        itens: [{ produtoId: primeiroProduto.id, quantidade: 1 }] // usa id numérico
       })
     })
     const pedido = await pedidoResp.json()
@@ -65,14 +80,14 @@ async function testarFluxo() {
       return
     }
 
-    // 5. Listar pedidos do cliente
+    // 6. Listar pedidos do cliente
     const meusPedidosResp = await fetch(`${API_URL}/pedido`, {
       headers: { 'Authorization': `Bearer ${tokenCliente}` }
     })
     const meusPedidos = await meusPedidosResp.json()
     console.log("📋 Meus pedidos:", meusPedidos)
 
-    // 6. Admin antecipa pedido
+    // 7. Admin antecipa pedido
     const anteciparResp = await fetch(`${API_URL}/pedido/admin/antecipar/${pedidoId}`, {
       method: 'PUT',
       headers: { 'Authorization': `Bearer ${tokenAdmin}` }
@@ -80,7 +95,7 @@ async function testarFluxo() {
     const antecipado = await anteciparResp.json()
     console.log("⏩ Pedido antecipado:", antecipado)
 
-    // 7. Admin gera balancete
+    // 8. Admin gera balancete
     const balanceteResp = await fetch(`${API_URL}/pedido/admin/balancete?periodo=diario`, {
       headers: { 'Authorization': `Bearer ${tokenAdmin}` }
     })

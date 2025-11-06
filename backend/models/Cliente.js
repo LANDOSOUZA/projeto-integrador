@@ -1,5 +1,7 @@
+// models/Cliente.js
 const mongoose = require('mongoose')
 const bcrypt = require('bcrypt')
+const Counter = require('./Counter')
 
 const clienteSchema = new mongoose.Schema({
   codigo: {
@@ -19,7 +21,6 @@ const clienteSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  // 👇 Campo padronizado para diferenciar cliente comum e admin
   status: {
     type: String,
     enum: ['usuario', 'admin'],
@@ -27,10 +28,22 @@ const clienteSchema = new mongoose.Schema({
   }
 }, { timestamps: true })
 
-// Antes de salvar, gera hash da senha
+// 🔑 Antes de salvar, gera código sequencial por status
 clienteSchema.pre('save', async function (next) {
-  if (!this.isModified('senha')) return next()
-  this.senha = await bcrypt.hash(this.senha, 10)
+  if (this.isNew) {
+    const contador = await Counter.findOneAndUpdate(
+      { nome: this.status },          // chave = status
+      { $inc: { seq: 1 } },
+      { new: true, upsert: true }
+    )
+    this.codigo = contador.seq
+  }
+
+  // Hash da senha
+  if (this.isModified('senha')) {
+    this.senha = await bcrypt.hash(this.senha, 10)
+  }
+
   next()
 })
 
