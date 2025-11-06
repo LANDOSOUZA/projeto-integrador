@@ -39,7 +39,6 @@
   </div>
 </template>
 
-
 <script setup>
 import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
@@ -66,6 +65,11 @@ async function fazerLogin() {
   try {
     loading.value = true
 
+    console.log("Payload enviado:", {
+      email: email.value,
+      senha: senha.value
+    })
+
     const { data } = await api.post('/cliente/login', {
       email: email.value,
       senha: senha.value
@@ -73,8 +77,8 @@ async function fazerLogin() {
 
     console.log("Resposta do backend:", data)
 
-    // Aceita tanto data.user quanto data.cliente
-    const usuario = data.user || data.cliente
+    // O backend retorna sempre "cliente"
+    const usuario = data.cliente
 
     if (!data.token || !usuario) {
       throw new Error("Resposta inesperada do servidor")
@@ -91,7 +95,7 @@ async function fazerLogin() {
 
   } catch (err) {
     console.error("Erro no login:", err)
-    erro.value = err.response?.data?.erro || err.message || 'Erro ao fazer login'
+    erro.value = err.response?.data?.mensagem || err.message || 'Erro ao fazer login'
   } finally {
     loading.value = false
   }
@@ -100,6 +104,12 @@ async function fazerLogin() {
 async function fazerCadastro() {
   try {
     loading.value = true
+    console.log("Payload enviado:", {
+      nome: nome.value,
+      email: email.value,
+      senha: senha.value
+    })
+
     await api.post('/cliente/cadastrar', {
       nome: nome.value,
       email: email.value,
@@ -109,7 +119,8 @@ async function fazerCadastro() {
     alert('Cadastro realizado com sucesso! Faça login.')
     alternarModo()
   } catch (err) {
-    erro.value = err.response?.data?.erro || 'Erro ao cadastrar'
+    console.error("Erro no cadastro:", err)
+    erro.value = err.response?.data?.mensagem || 'Erro ao cadastrar'
   } finally {
     loading.value = false
   }

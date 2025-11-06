@@ -3,6 +3,9 @@ const express = require('express')
 const mongoose = require('mongoose')
 const cors = require('cors')
 
+console.log("JWT_SECRET carregado:", process.env.JWT_SECRET)
+
+
 // Middlewares
 const autenticarToken = require('./middleware/auth')
 const verificarAdmin = require('./middleware/verificarAdmin')

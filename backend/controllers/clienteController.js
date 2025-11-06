@@ -75,7 +75,7 @@ const loginCliente = async (req, res) => {
         email: cliente.email,
         status: cliente.status
       },
-      process.env.JWT_SECRET || 'segredo',
+      process.env.JWT_SECRET,
       { expiresIn: '24h' }
     )
 
