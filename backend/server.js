@@ -3,9 +3,6 @@ const express = require('express')
 const mongoose = require('mongoose')
 const cors = require('cors')
 
-console.log("JWT_SECRET carregado:", process.env.JWT_SECRET)
-
-
 // Middlewares
 const autenticarToken = require('./middleware/auth')
 const verificarAdmin = require('./middleware/verificarAdmin')
@@ -15,7 +12,7 @@ const clienteRoutes = require('./routes/cliente')
 const produtoRoutes = require('./routes/produto')
 const pedidoRoutes = require('./routes/pedido')
 
-// Funções utilitárias
+// Funções utilitárias (seeds)
 const garantirProdutosBase = require('./utils/garantirProdutosBase')
 const criarAdminBase = require('./utils/criarAdminBase')
 const criarCountersBase = require('./utils/criarCountersBase')
@@ -32,7 +29,7 @@ app.use(express.json())
 app.use('/cliente', clienteRoutes)
 app.use('/produto', produtoRoutes)
 
-// Rotas protegidas (exigem login)
+// Rotas protegidas (usuário autenticado)
 app.use('/pedido', autenticarToken, pedidoRoutes)
 
 // Exemplo de rota admin protegida
@@ -40,13 +37,22 @@ app.get('/admin/teste', autenticarToken, verificarAdmin, (req, res) => {
   res.json({ mensagem: 'Acesso permitido apenas para admin' })
 })
 
-// Conexão com MongoDB e inicialização do servidor
+// Conexão com MongoDB e inicialização
 mongoose.connect(MONGO_URL)
   .then(async () => {
     console.log('📦 Conectado ao MongoDB')
-    await criarCountersBase()    // 🔹 inicializa contadores
-    await garantirProdutosBase() // 🔹 restaura produtos fixos
-    await criarAdminBase()       // 🔹 cria admin base
+
+    // Seeds iniciais
+    await criarCountersBase()
+    console.log('⚙️ Counters base garantidos')
+
+    await garantirProdutosBase()
+    console.log('🍹 Produtos base garantidos')
+
+    await criarAdminBase()
+    console.log('👑 Admin root garantido')
+
+    // Inicializa servidor
     app.listen(PORT, () => {
       console.log(`🚀 Servidor rodando na porta ${PORT}`)
     })

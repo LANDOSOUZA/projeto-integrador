@@ -3,7 +3,8 @@ import { createRouter, createWebHistory } from 'vue-router'
 // Importar as views (páginas)
 import Produtos from '../views/Produtos.vue'
 import Carrinho from '../views/Carrinho.vue'
-import LoginCadastro from '../views/LoginCadastro.vue'
+import Login from '../views/Login.vue'
+import Cadastro from '../views/Cadastro.vue'
 import MeusPedidos from '../views/MeusPedidos.vue'
 import Admin from '../views/Admin.vue'
 import NotFound from '../views/NotFound.vue' // Página 404
@@ -11,8 +12,8 @@ import NotFound from '../views/NotFound.vue' // Página 404
 const clienteRoutes = [
   { path: '/', name: 'Produtos', component: Produtos },
   { path: '/carrinho', name: 'Carrinho', component: Carrinho },
-  { path: '/login', name: 'LoginCadastro', component: LoginCadastro },
-  { path: '/cadastro', name: 'Cadastro', component: () => import('../views/Cadastro.vue') },
+  { path: '/login', name: 'Login', component: Login },
+  { path: '/cadastro', name: 'Cadastro', component: Cadastro },
   { path: '/meus-pedidos', name: 'MeusPedidos', component: MeusPedidos }
 ]
 

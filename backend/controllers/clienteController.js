@@ -28,12 +28,26 @@ const cadastrarCliente = async (req, res) => {
       status: 'usuario'
     })
 
-
     await novoCliente.save()
 
+    // 🔑 Gerar token JWT
+    const token = jwt.sign(
+      {
+        id: novoCliente._id,
+        codigo: novoCliente.codigo,
+        nome: novoCliente.nome,
+        email: novoCliente.email,
+        status: novoCliente.status
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' }
+    )
+
+    // 🔹 Agora retorna também token e user
     res.status(201).json({
       mensagem: 'Cliente cadastrado com sucesso',
-      cliente: {
+      token,
+      user: {
         id: novoCliente._id,
         codigo: novoCliente.codigo,
         nome: novoCliente.nome,
@@ -42,11 +56,9 @@ const cadastrarCliente = async (req, res) => {
       }
     })
   } catch (err) {
-    console.error('❌ Erro ao cadastrar cliente:', err)
     res.status(500).json({ mensagem: 'Erro ao cadastrar cliente', erro: err.message })
   }
 }
-
 // 🔐 Login do cliente (corrigido)
 const loginCliente = async (req, res) => {
   try {
@@ -83,7 +95,7 @@ const loginCliente = async (req, res) => {
     res.status(200).json({
       mensagem: 'Login realizado com sucesso',
       token,
-      cliente: {
+      user: {
         id: cliente._id,
         codigo: cliente.codigo,
         nome: cliente.nome,

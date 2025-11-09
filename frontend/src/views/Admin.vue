@@ -1,3 +1,67 @@
+<script setup>
+import { onMounted, ref } from 'vue'
+import { usePedidosStore } from '../stores/pedidos'
+
+const pedidoStore = usePedidosStore()
+const logs = ref([])
+const erro = ref('')
+
+// 📋 Carregar pedidos
+async function carregarPedidos() {
+  try {
+    await pedidoStore.listarTodosPedidosAdmin()
+    logs.value.push(`Carregados ${pedidoStore.pedidos.length} pedidos`)
+  } catch (err) {
+    erro.value = 'Erro ao carregar pedidos'
+  }
+}
+
+// ⏩ Antecipar pedido
+async function anteciparPedido(id) {
+  try {
+    const status = await pedidoStore.anteciparPedido(id)
+    logs.value.push(`Pedido ${id} antecipado para "${status}"`)
+    carregarPedidos()
+  } catch {
+    logs.value.push(`Erro ao antecipar pedido ${id}`)
+  }
+}
+
+// 🗑️ Excluir pedidos de cliente
+async function excluirPedidosCliente(codigoCliente) {
+  if (!confirm('Tem certeza que deseja excluir todos os pedidos deste cliente?')) return
+  try {
+    await pedidoStore.excluirPedidosClienteAdmin(codigoCliente)
+    logs.value.push(`Pedidos do cliente ${codigoCliente} excluídos`)
+    carregarPedidos()
+  } catch {
+    logs.value.push(`Erro ao excluir pedidos do cliente ${codigoCliente}`)
+  }
+}
+
+// 🧹 Limpar todos os pedidos
+async function limparPedidos() {
+  if (!confirm('Tem certeza que deseja limpar TODOS os pedidos?')) return
+  try {
+    await pedidoStore.limparPedidos()
+    logs.value.push('Todos os pedidos foram removidos')
+    carregarPedidos()
+  } catch {
+    logs.value.push('Erro ao limpar pedidos')
+  }
+}
+
+// 🍹 Emoji para produtos
+function getEmoji(nomeProduto) {
+  const mapa = { laranja: '🍊', uva: '🍇', abacaxi: '🍍' }
+  return mapa[nomeProduto] || '🥤'
+}
+
+onMounted(() => {
+  carregarPedidos()
+})
+</script>
+
 <template>
   <div class="p-6">
     <h1 class="text-2xl font-bold mb-4">Painel Administrativo</h1>
@@ -22,7 +86,7 @@
         </tr>
       </thead>
       <tbody>
-        <tr v-for="pedido in pedidos" :key="pedido._id" class="border-b">
+        <tr v-for="pedido in pedidoStore.pedidos" :key="pedido._id" class="border-b">
           <td class="p-2 border">{{ pedido.clienteId?.nome }}</td>
           <td class="p-2 border">{{ pedido.codigoCliente }}</td>
           <td class="p-2 border">
@@ -60,75 +124,3 @@
     <p v-if="erro" class="text-red-600 mt-4">{{ erro }}</p>
   </div>
 </template>
-
-<script setup>
-import { ref, onMounted } from 'vue'
-import { api } from '../services/api'
-import { useUserStore } from '../stores/user'
-
-const pedidos = ref([])
-const logs = ref([])
-const erro = ref('')
-const userStore = useUserStore()
-
-function authHeaders() {
-  return {
-    headers: { Authorization: `Bearer ${userStore.token}` }
-  }
-}
-
-async function carregarPedidos() {
-  try {
-    const { data } = await api.get('/pedido/admin', authHeaders())
-    pedidos.value = data.pedidos
-    logs.value.push(`Carregados ${data.pedidos.length} pedidos`)
-  } catch (err) {
-    erro.value = err.response?.data?.mensagem || 'Erro ao carregar pedidos'
-  }
-}
-
-async function anteciparPedido(id) {
-  try {
-    const { data } = await api.put(`/pedido/admin/antecipar/${id}`, {}, authHeaders())
-    logs.value.push(`Pedido ${id} antecipado para "${data.pedido.status}"`)
-    carregarPedidos()
-  } catch (err) {
-    logs.value.push(`Erro ao antecipar pedido ${id}`)
-  }
-}
-
-async function excluirPedidosCliente(codigoCliente) {
-  if (!confirm('Tem certeza que deseja excluir todos os pedidos deste cliente?')) return
-  try {
-    await api.delete(`/pedido/admin/excluir/${codigoCliente}`, authHeaders())
-    logs.value.push(`Pedidos do cliente ${codigoCliente} excluídos`)
-    carregarPedidos()
-  } catch (err) {
-    logs.value.push(`Erro ao excluir pedidos do cliente ${codigoCliente}`)
-  }
-}
-
-async function limparPedidos() {
-  if (!confirm('Tem certeza que deseja limpar TODOS os pedidos?')) return
-  try {
-    await api.delete('/pedido/admin/limpar', authHeaders())
-    logs.value.push('Todos os pedidos foram removidos')
-    carregarPedidos()
-  } catch (err) {
-    logs.value.push('Erro ao limpar pedidos')
-  }
-}
-
-function getEmoji(nomeProduto) {
-  const mapa = {
-    laranja: '🍊',
-    uva: '🍇',
-    abacaxi: '🍍'
-  }
-  return mapa[nomeProduto] || '🥤'
-}
-
-onMounted(() => {
-  carregarPedidos()
-})
-</script>

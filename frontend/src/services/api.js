@@ -1,19 +1,18 @@
-import axios from 'axios'
-import { useUserStore } from '../stores/user'
+// 📂 src/services/api.js
+import axios from 'axios';
 
-export const api = axios.create({
+const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000',
   timeout: 10000
-})
+});
 
 // Interceptor para incluir o token em todas as requisições
 api.interceptors.request.use(config => {
-  const userStore = useUserStore()
-  const token = userStore.token
+  const token = localStorage.getItem('token'); // 👈 pega direto do localStorage
   if (token) {
-    config.headers.Authorization = `Bearer ${token}`
+    config.headers.Authorization = `Bearer ${token}`;
   }
-  return config
-}, error => {
-  return Promise.reject(error)
-})
+  return config;
+}, error => Promise.reject(error));
+
+export default api; // 👈 agora exporta como default

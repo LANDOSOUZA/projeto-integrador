@@ -19,6 +19,12 @@ const cadastrarPedido = async (req, res) => {
       return res.status(404).json({ mensagem: 'Cliente não encontrado' })
     }
 
+    // Limite de 3 pedidos ativos por cliente
+    const pedidosAtivos = await Pedido.countDocuments({ clienteId: cliente._id, status: 'iniciado' })
+    if (pedidosAtivos >= 3) {
+      return res.status(400).json({ mensagem: 'Limite de 3 pedidos ativos atingido' })
+    }
+
     const total = itens.reduce((acc, item) => acc + (Number(item.quantidade) || 0), 0)
     if (total < 1 || total > 3) {
       return res.status(400).json({ mensagem: 'O pedido deve ter entre 1 e 3 sucos' })
@@ -47,7 +53,7 @@ const cadastrarPedido = async (req, res) => {
     const itensConvertidos = []
 
       for (const item of itens) {
-        const produto = await Produto.findOne({ id: item.produtoId }) // busca pelo id fixo
+        const produto = await Produto.findById(item.produtoId)
         if (!produto) {
           return res.status(400).json({ mensagem: `Produto ${item.produtoId} não encontrado` })
         }
@@ -70,70 +76,79 @@ const cadastrarPedido = async (req, res) => {
 
     await novoPedido.save()
 
+    const pedidoPopulado = await novoPedido.populate([
+      { path: 'clienteId', select: 'codigo nome email perfil' },
+      { path: 'itens.produtoId', select: 'codigo nome preco status' }
+    ])
+
     res.status(201).json({
       mensagem: 'Pedido cadastrado com sucesso',
-      pedido: await novoPedido.populate([
-        { path: 'clienteId', select: 'codigo nome email perfil' },
-        { path: 'itens.produtoId', select: 'codigo nome preco status' }
-      ])
+      pedido: pedidoPopulado.toObject()   // ✅ garante objeto limpo
     })
+
   } catch (err) {
     console.error('❌ Erro ao cadastrar pedido:', err)
     res.status(500).json({ mensagem: 'Erro ao cadastrar pedido', erro: err.message })
   }
 }
 
-// 📋 Listar pedidos do cliente logado
+// 📋 Listar pedidos (admin ou cliente)
 const listarPedidos = async (req, res) => {
   try {
-    if (!req.user) {
+    // Se for admin, lista todos; se for cliente, lista só os dele
+    const filtro = req.user?.perfil === 'admin'
+      ? {}
+      : { clienteId: req.user?.id }
+
+    const pedidos = await Pedido.find(filtro)
+      .sort({ data: -1 })
+      .populate([
+        { path: 'clienteId', select: 'codigo nome email perfil' },
+        { path: 'itens.produtoId', select: 'codigo nome preco status' }
+      ])
+
+    res.status(200).json({
+      mensagem: 'Pedidos listados com sucesso',
+      pedidos: pedidos.map(p => p.toObject())
+    })
+  } catch (err) {
+    console.error('❌ Erro ao listar pedidos:', err)
+    res.status(500).json({ mensagem: 'Erro ao listar pedidos', erro: err.message })
+  }
+}
+
+
+// 📜 Histórico de pedidos (cliente)
+const historicoPedidos = async (req, res) => {
+  try {
+    if (!req.user?.codigo) {
       return res.status(401).json({ mensagem: 'Usuário não autenticado' })
     }
 
-    const { codigo } = req.user
-    const cliente = await Cliente.findOne({ codigo })
+    const cliente = await Cliente.findOne({ codigo: req.user.codigo })
     if (!cliente) {
       return res.status(404).json({ mensagem: 'Cliente não encontrado' })
     }
 
     const pedidos = await Pedido.find({ clienteId: cliente._id })
-      .populate('clienteId', 'codigo nome email perfil')
-      .populate('itens.produtoId', 'codigo nome preco status')
       .sort({ data: -1 })
+      .populate([
+        { path: 'clienteId', select: 'codigo nome email perfil' },
+        { path: 'itens.produtoId', select: 'codigo nome preco status' }
+      ])
 
-    res.status(200).json({ pedidos })
+    res.status(200).json({
+      mensagem: 'Histórico de pedidos recuperado com sucesso',
+      pedidos: pedidos.map(p => p.toObject())
+    })
   } catch (err) {
-    console.error('❌ Erro ao buscar pedidos:', err)
-    res.status(500).json({ mensagem: 'Erro ao buscar pedidos', erro: err.message })
+    console.error('❌ Erro ao buscar histórico de pedidos:', err)
+    res.status(500).json({ mensagem: 'Erro ao buscar histórico de pedidos', erro: err.message })
   }
 }
 
-// 🕓 Histórico de pedidos do cliente
-const historicoPedidos = async (req, res) => {
-  try {
-    if (!req.user) {
-      return res.status(401).json({ mensagem: 'Usuário não autenticado' })
-    }
 
-    const { codigo } = req.user
-    const cliente = await Cliente.findOne({ codigo })
-    if (!cliente) {
-      return res.status(404).json({ mensagem: 'Cliente não encontrado' })
-    }
-
-    const historico = await Pedido.find({ clienteId: cliente._id })
-      .populate('clienteId', 'codigo nome email perfil')
-      .populate('itens.produtoId', 'codigo nome preco status')
-      .sort({ data: -1 })
-
-    res.status(200).json({ historico })
-  } catch (err) {
-    console.error('❌ Erro ao buscar histórico:', err)
-    res.status(500).json({ mensagem: 'Erro ao buscar histórico', erro: err.message })
-  }
-}
-
-// ❌ Cancelar pedido
+// ❌ Cancelar pedido (cliente)
 const cancelarPedido = async (req, res) => {
   try {
     const { id } = req.params
@@ -144,7 +159,7 @@ const cancelarPedido = async (req, res) => {
     }
 
     if (pedido.status === 'pronto') {
-      return res.status(400).json({ mensagem: 'Não é possível cancelar um pedido que já está pronto' })
+      return res.status(400).json({ mensagem: 'Não é possível cancelar um pedido já finalizado' })
     }
 
     if (pedido.status === 'cancelado') {
@@ -154,12 +169,60 @@ const cancelarPedido = async (req, res) => {
     pedido.status = 'cancelado'
     await pedido.save()
 
-    res.status(200).json({ mensagem: 'Pedido cancelado com sucesso', pedido })
+    // 🔎 Popula cliente e produtos para resposta completa
+    const pedidoPopulado = await pedido.populate([
+      { path: 'clienteId', select: 'codigo nome email perfil' },
+      { path: 'itens.produtoId', select: 'codigo nome preco status' }
+    ])
+
+    res.status(200).json({
+      mensagem: 'Pedido cancelado com sucesso',
+      pedido: pedidoPopulado.toObject()
+    })
   } catch (err) {
     console.error('❌ Erro ao cancelar pedido:', err)
     res.status(500).json({ mensagem: 'Erro ao cancelar pedido', erro: err.message })
   }
 }
+
+
+// ✅ Finalizar pedido (cliente)
+const finalizarPedido = async (req, res) => {
+  try {
+    const { id } = req.params
+    const pedido = await Pedido.findById(id)
+
+    if (!pedido) {
+      return res.status(404).json({ mensagem: 'Pedido não encontrado' })
+    }
+
+    if (pedido.status === 'cancelado') {
+      return res.status(400).json({ mensagem: 'Não é possível finalizar um pedido cancelado' })
+    }
+
+    if (pedido.status === 'pronto') {
+      return res.status(400).json({ mensagem: 'O pedido já está finalizado' })
+    }
+
+    pedido.status = 'pronto'
+    await pedido.save()
+
+    // 🔎 Popula cliente e produtos para resposta completa
+    const pedidoPopulado = await pedido.populate([
+      { path: 'clienteId', select: 'codigo nome email perfil' },
+      { path: 'itens.produtoId', select: 'codigo nome preco status' }
+    ])
+
+    res.status(200).json({
+      mensagem: 'Pedido finalizado com sucesso',
+      pedido: pedidoPopulado.toObject()
+    })
+  } catch (err) {
+    console.error('❌ Erro ao finalizar pedido:', err)
+    res.status(500).json({ mensagem: 'Erro ao finalizar pedido', erro: err.message })
+  }
+}
+
 
 // ========================
 // 🔧 Rotas Administrativas
@@ -240,16 +303,37 @@ const limparPedidos = async (req, res) => {
   }
 }
 
+
+// 🧹 Limpar todos os pedidos do cliente logado
+const limparPedidosCliente = async (req, res) => {
+  try {
+    if (!req.user?.codigo) {
+      return res.status(401).json({ mensagem: 'Usuário não autenticado' })
+    }
+
+    const cliente = await Cliente.findOne({ codigo: req.user.codigo })
+    if (!cliente) {
+      return res.status(404).json({ mensagem: 'Cliente não encontrado' })
+    }
+
+    await Pedido.deleteMany({ clienteId: cliente._id })
+
+    res.status(200).json({ mensagem: 'Todos os pedidos do cliente foram removidos com sucesso' })
+  } catch (err) {
+    console.error('❌ Erro ao limpar pedidos do cliente:', err)
+    res.status(500).json({ mensagem: 'Erro ao limpar pedidos do cliente', erro: err.message })
+  }
+}
+
+
 // 📊 Gerar balancete (admin) — soma das quantidades por produto
 const gerarBalancete = async (req, res) => {
   try {
     const { periodo } = req.query
-    const dataInicial = calcularDataInicial(periodo)
-    if (!dataInicial) {
+    const inicio = calcularDataInicial(periodo)   // já retorna Date
+    if (!inicio) {
       return res.status(400).json({ mensagem: 'Período inválido. Use: diario, semanal, mensal, bimestral, trimestral, semestral ou anual.' })
     }
-
-    const inicio = new Date(dataInicial.split('/').reverse().join('-'))
 
     const resumo = await Pedido.aggregate([
       { $match: { data: { $gte: inicio } } },
@@ -281,7 +365,7 @@ const gerarBalancete = async (req, res) => {
 
     res.status(200).json({
       periodo,
-      desde: dataInicial,
+      desde: inicio.toLocaleDateString('pt-BR'),   // exibe formatado
       ate: new Date().toLocaleDateString('pt-BR'),
       resumo
     })
@@ -306,10 +390,7 @@ function calcularDataInicial(periodo) {
     default: return null
   }
 
-  const dia = String(data.getDate()).padStart(2, '0')
-  const mes = String(data.getMonth() + 1).padStart(2, '0')
-  const ano = data.getFullYear()
-  return `${dia}/${mes}/${ano}`
+  return data   // 🔑 retorna Date direto
 }
 
 // ========================
@@ -374,10 +455,12 @@ module.exports = {
   listarPedidos,
   historicoPedidos,
   cancelarPedido,
+  finalizarPedido,          // 🔹 novo
   listarTodosPedidosAdmin,
   anteciparPedido,
   excluirPedidosClienteAdmin,
   limparPedidos,
+  limparPedidosCliente,     // 🔹 novo
   gerarBalancete,
   reordenarFilaMES
 }

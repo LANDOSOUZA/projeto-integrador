@@ -4,20 +4,29 @@ const Cliente = require('../models/Cliente')
 
 async function criarAdminBase() {
   try {
-    // Apaga qualquer admin existente
-    await Cliente.deleteMany({ email: "landosouza@sucos.com" })
+    const emailAdmin = "landosouza@sucos.com"
+    const senhaAdmin = "@L11Lando02025"
 
-    const senhaHash = await bcrypt.hash('@L11Lando02025', 10)
+    // Verifica se já existe admin com esse email
+    const existente = await Cliente.findOne({ email: emailAdmin })
+    if (existente) {
+      console.log("⚡ Admin já existe:", existente.email)
+      return
+    }
 
+    // Cria hash da senha
+    const senhaHash = await bcrypt.hash(senhaAdmin, 10)
+
+    // Cria novo admin com senha hash
     const novoAdmin = new Cliente({
       nome: "Lando Souza",
-      email: "landosouza@sucos.com",
-      senha: "@L11Lando02025", // texto puro
+      email: emailAdmin,
+      senha: senhaHash,   // importante: salvar o hash
       status: "admin"
     })
 
     await novoAdmin.save()
-    console.log("✅ Admin recriado com sucesso:", novoAdmin.email, "código:", novoAdmin.codigo)
+    console.log("✅ Admin root criado com sucesso:", novoAdmin.email)
   } catch (err) {
     console.error("❌ Erro ao criar admin base:", err)
   }
