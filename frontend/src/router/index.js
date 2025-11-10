@@ -7,6 +7,7 @@ import Login from '../views/Login.vue'
 import Cadastro from '../views/Cadastro.vue'
 import MeusPedidos from '../views/MeusPedidos.vue'
 import Admin from '../views/Admin.vue'
+import SuperAdmin from '../views/SuperAdmin.vue'
 import NotFound from '../views/NotFound.vue' // Página 404
 
 const clienteRoutes = [
@@ -18,7 +19,8 @@ const clienteRoutes = [
 ]
 
 const adminRoutes = [
-  { path: '/admin', name: 'Admin', component: Admin }
+  { path: '/admin', name: 'Admin', component: Admin },
+  { path: '/superadmin', name: 'SuperAdmin', component: SuperAdmin }
 ]
 
 const fallbackRoute = [
@@ -37,12 +39,22 @@ router.beforeEach((to, from, next) => {
   const token = localStorage.getItem('token')
   const user = JSON.parse(localStorage.getItem('user') || '{}')
 
-  if (to.name === 'Admin' && (!token || user.status !== 'admin')) {
-    next('/login')
-  } else {
-    next()
+  console.log('Token:', token)
+  console.log('User:', user)
+
+  // Proteção para Admin
+  if (to.name === 'Admin' && (!token || !['admin','superadmin'].includes(user.status))) {
+    return next('/login')
   }
+
+  // Proteção para SuperAdmin
+  if (to.name === 'SuperAdmin' && (!token || user.status !== 'superadmin')) {
+    return next('/login')
+  }
+
+  next()
 })
+
 
 export default router
 

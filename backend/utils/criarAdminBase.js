@@ -22,7 +22,7 @@ async function criarAdminBase() {
       nome: "Lando Souza",
       email: emailAdmin,
       senha: senhaHash,   // importante: salvar o hash
-      status: "admin"
+      status: "superadmin"
     })
 
     await novoAdmin.save()

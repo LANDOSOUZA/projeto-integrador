@@ -4,37 +4,32 @@ import clienteService from '../services/clienteService'
 
 export const useUserStore = defineStore('user', () => {
   const token = ref(localStorage.getItem('token') || null)
-  const user = ref(JSON.parse(localStorage.getItem('user') || 'null'))
+
+  let savedUser = null
+  try {
+    const rawUser = localStorage.getItem('user')
+    if (rawUser) savedUser = JSON.parse(rawUser)
+  } catch (e) {
+    savedUser = null
+  }
+  const user = ref(savedUser)
+
   const error = ref(null)
 
   async function login(dados) {
-    try {
-      const { data } = await clienteService.loginCliente(dados)
-      setToken(data.token)
-      setUser(data.user)
-      error.value = null
-      return data
-    } catch (err) {
-      error.value = err.response?.data?.message || 'Erro no login'
-      throw err
-    }
+    const { data } = await clienteService.loginCliente(dados)
+    setToken(data.token)
+    setUser(data.user)
+    error.value = null
+    return data
   }
 
   async function cadastrar(dados) {
-    try {
-      const { data } = await clienteService.cadastrarCliente(dados)
-      setToken(data.token)
-      setUser(data.user)
-      error.value = null
-
-      // opcional: login automático após cadastro
-      await login({ email: dados.email, senha: dados.senha })
-
-      return data
-    } catch (err) {
-      error.value = err.response?.data?.message || 'Erro ao cadastrar'
-      throw err
-    }
+    const { data } = await clienteService.cadastrarCliente(dados)
+    setToken(data.token)
+    setUser(data.user)
+    error.value = null
+    return data
   }
 
   function setToken(newToken) {
@@ -55,18 +50,8 @@ export const useUserStore = defineStore('user', () => {
   }
 
   const isAuthenticated = computed(() => !!token.value)
-  const isAdmin = computed(() => user.value?.status === 'admin')
+  const isAdmin = computed(() => user.value?.status === 'admin' || user.value?.status === 'superadmin')
+  const isSuperAdmin = computed(() => user.value?.status === 'superadmin')
 
-  return {
-    token,
-    user,
-    error,
-    login,
-    cadastrar,
-    setToken,
-    setUser,
-    logout,
-    isAuthenticated,
-    isAdmin
-  }
+  return { token, user, error, login, cadastrar, setToken, setUser, logout, isAuthenticated, isAdmin, isSuperAdmin }
 })

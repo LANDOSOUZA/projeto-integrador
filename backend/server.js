@@ -1,21 +1,22 @@
-require('dotenv').config()
-const express = require('express')
-const mongoose = require('mongoose')
-const cors = require('cors')
+import 'dotenv/config'
+import express from 'express'
+import mongoose from 'mongoose'
+import cors from 'cors'
 
 // Middlewares
-const autenticarToken = require('./middleware/auth')
-const verificarAdmin = require('./middleware/verificarAdmin')
+import autenticarToken from './middleware/auth.js'
+import verificarAdmin from './middleware/verificarAdmin.js'
 
 // Rotas
-const clienteRoutes = require('./routes/cliente')
-const produtoRoutes = require('./routes/produto')
-const pedidoRoutes = require('./routes/pedido')
+import clienteRoutes from './routes/cliente.js'
+import produtoRoutes from './routes/produto.js'
+import pedidoRoutes from './routes/pedido.js'
+import adminRoutes from './routes/admin.js' // 👑 rotas de admin
 
 // Funções utilitárias (seeds)
-const garantirProdutosBase = require('./utils/garantirProdutosBase')
-const criarAdminBase = require('./utils/criarAdminBase')
-const criarCountersBase = require('./utils/criarCountersBase')
+import garantirProdutosBase from './utils/garantirProdutosBase.js'
+import criarAdminBase from './utils/criarAdminBase.js'
+import criarCountersBase from './utils/criarCountersBase.js'
 
 const app = express()
 const PORT = process.env.PORT || 3000
@@ -32,10 +33,8 @@ app.use('/produto', produtoRoutes)
 // Rotas protegidas (usuário autenticado)
 app.use('/pedido', autenticarToken, pedidoRoutes)
 
-// Exemplo de rota admin protegida
-app.get('/admin/teste', autenticarToken, verificarAdmin, (req, res) => {
-  res.json({ mensagem: 'Acesso permitido apenas para admin' })
-})
+// Rotas de admin (proteção já feita no próprio routes/admin.js)
+app.use('/admin', autenticarToken, verificarAdmin, adminRoutes)
 
 // Conexão com MongoDB e inicialização
 mongoose.connect(MONGO_URL)

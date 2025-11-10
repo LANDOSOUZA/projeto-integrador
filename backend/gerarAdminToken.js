@@ -1,15 +1,18 @@
 const jwt = require('jsonwebtoken')
 
-const token = jwt.sign(
-  {
-    id: "admin-id-fixo",
-    codigo: 0,
-    nome: "Admin",
-    email: "admin@admin.com",
-    status: "admin"
-  },
-  "meusegredoforte123", // mesmo segredo do seu .env
-  { expiresIn: "24h" }
-)
+function gerarAdminToken(usuario) {
+  return jwt.sign(
+    {
+      id: usuario._id,
+      codigo: usuario.codigo,
+      nome: usuario.nome,
+      email: usuario.email,
+      status: usuario.status   // <-- pega do banco, não fixo
+    },
+    process.env.JWT_SECRET,    // use o segredo do seu .env
+    { expiresIn: "24h" }
+  )
+}
 
-console.log("Novo ADMIN_TOKEN:", token)
+module.exports = gerarAdminToken
+

@@ -1,8 +1,8 @@
 // middleware/verificarAdmin.js
-
 function verificarAdmin(req, res, next) {
-  // Aqui usamos o campo "status" do token, que já vimos que vem como "usuario" ou "admin"
-  if (req.user?.status !== 'admin') {
+  const status = req.user?.status
+  if (status !== 'admin' && status !== 'superadmin') {
+    console.warn(`Acesso negado: usuário ${req.user?.email || 'desconhecido'} tentou acessar rota de admin`)
     return res.status(403).json({ mensagem: 'Acesso restrito a administradores' })
   }
   next()

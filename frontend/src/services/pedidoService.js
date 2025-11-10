@@ -1,8 +1,11 @@
-// 📂 src/services/pedidoService.js
 import api from './api';
 import authHeader from './authHeader';
 
 export default {
+  // ============================
+  // 📌 Funcionalidades do Cliente
+  // ============================
+
   async cadastrarPedido(itens) {
     return api.post('/pedido', { itens }, { headers: authHeader() });
   },
@@ -23,11 +26,28 @@ export default {
     return api.patch(`/pedido/${id}/finalizar`, {}, { headers: authHeader() });
   },
 
+  async limparPedidosCliente() {
+    return api.delete('/pedido/limpar', { headers: authHeader() });
+  },
+
+  async detalharPedido(id) {
+    return api.get(`/pedido/${id}`, { headers: authHeader() });
+  },
+
+  async atualizarPedido(id, dados) {
+    return api.patch(`/pedido/${id}`, dados, { headers: authHeader() });
+  },
+
+  // ============================
+  // 📌 Funcionalidades do Admin
+  // ============================
+
   async listarTodosPedidosAdmin() {
     return api.get('/pedido/admin', { headers: authHeader() });
   },
 
-  async anteciparPedido(id) {
+  // 🚀 Liberar pedido para CLP (antes chamado de "antecipar")
+  async liberarPedido(id) {
     return api.put(`/pedido/admin/antecipar/${id}`, {}, { headers: authHeader() });
   },
 
@@ -39,23 +59,15 @@ export default {
     return api.delete('/pedido/admin/limpar', { headers: authHeader() });
   },
 
-  async limparPedidosCliente() {
-    return api.delete('/pedido/limpar', { headers: authHeader() });
-  },
-
   async gerarBalancete(periodo) {
     return api.get(`/pedido/admin/balancete?periodo=${periodo}`, { headers: authHeader() });
   },
 
+  // ============================
+  // 📌 Funcionalidades do MES
+  // ============================
+
   async reordenarFilaMES(pedidoId, dados) {
     return api.put(`/pedido/mes/reordenar/${pedidoId}`, dados, { headers: authHeader() });
-  },
-
-  async detalharPedido(id) {
-    return api.get(`/pedido/${id}`, { headers: authHeader() });
-  },
-
-  async atualizarPedido(id, dados) {
-    return api.patch(`/pedido/${id}`, dados, { headers: authHeader() });
   }
 };

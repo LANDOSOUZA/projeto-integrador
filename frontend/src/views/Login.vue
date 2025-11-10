@@ -1,32 +1,13 @@
 <template>
   <div class="login">
     <h1>Login</h1>
-
     <form @submit.prevent="login">
-      <input
-        v-model="email"
-        type="email"
-        placeholder="E-mail"
-        autocomplete="username"
-      />
-
-      <input
-        v-model="senha"
-        type="password"
-        placeholder="Senha"
-        autocomplete="current-password"
-      />
-
-      <button type="submit" :disabled="loading">
-        {{ loading ? 'Entrando...' : 'Entrar' }}
-      </button>
+      <input v-model="email" type="email" placeholder="E-mail" />
+      <input v-model="senha" type="password" placeholder="Senha" />
+      <button type="submit" :disabled="loading">{{ loading ? 'Entrando...' : 'Entrar' }}</button>
     </form>
-
     <p v-if="erro" style="color:red">{{ erro }}</p>
-
-    <router-link to="/cadastro">
-      Não tem conta? Cadastre-se
-    </router-link>
+    <router-link to="/cadastro">Não tem conta? Cadastre-se</router-link>
   </div>
 </template>
 
@@ -48,14 +29,15 @@ async function login() {
     loading.value = true
     await userStore.login({ email: email.value, senha: senha.value })
 
-    const usuario = userStore.user
-    if (usuario?.status === 'admin') {
+    if (userStore.isSuperAdmin) {
+      router.push('/superadmin')
+    } else if (userStore.isAdmin) {
       router.push('/admin')
     } else {
       router.push('/meus-pedidos')
     }
   } catch (err) {
-    erro.value = userStore.error?.message || 'Falha no login'
+    erro.value = userStore.error || 'Falha no login'
   } finally {
     loading.value = false
   }
