@@ -11,9 +11,11 @@ import verificarAdmin from './middleware/verificarAdmin.js'
 import clienteRoutes from './routes/cliente.js'
 import produtoRoutes from './routes/produto.js'
 import pedidoRoutes from './routes/pedido.js'
-import adminRoutes from './routes/admin.js' // 👑 rotas de admin
+import adminRoutes from './routes/admin.js'
+import statusRoutes from './routes/statusRouter.js'
+import relatorioRoutes from './routes/relatorioRouter.js'
 
-// Funções utilitárias (seeds)
+// Seeds
 import garantirProdutosBase from './utils/garantirProdutosBase.js'
 import criarAdminBase from './utils/criarAdminBase.js'
 import criarCountersBase from './utils/criarCountersBase.js'
@@ -22,7 +24,6 @@ const app = express()
 const PORT = process.env.PORT || 3000
 const MONGO_URL = process.env.MONGO_URL || process.env.MONGO_URI
 
-// Middlewares globais
 app.use(cors())
 app.use(express.json())
 
@@ -30,18 +31,19 @@ app.use(express.json())
 app.use('/cliente', clienteRoutes)
 app.use('/produto', produtoRoutes)
 
-// Rotas protegidas (usuário autenticado)
+// Rotas protegidas
 app.use('/pedido', autenticarToken, pedidoRoutes)
+app.use('/status', autenticarToken, statusRoutes)
+app.use('/relatorios', autenticarToken, relatorioRoutes)
 
-// Rotas de admin (proteção já feita no próprio routes/admin.js)
+// Rotas de admin
 app.use('/admin', autenticarToken, verificarAdmin, adminRoutes)
 
-// Conexão com MongoDB e inicialização
+// Conexão com MongoDB
 mongoose.connect(MONGO_URL)
   .then(async () => {
     console.log('📦 Conectado ao MongoDB')
 
-    // Seeds iniciais
     await criarCountersBase()
     console.log('⚙️ Counters base garantidos')
 
@@ -51,7 +53,6 @@ mongoose.connect(MONGO_URL)
     await criarAdminBase()
     console.log('👑 Admin root garantido')
 
-    // Inicializa servidor
     app.listen(PORT, () => {
       console.log(`🚀 Servidor rodando na porta ${PORT}`)
     })

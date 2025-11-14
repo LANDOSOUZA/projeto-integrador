@@ -1,7 +1,18 @@
 const Pedido = require('../models/Pedido')
 const Cliente = require('../models/Cliente')
-const Produto = require('../models/Produto')
+const pedidoService = require('../services/pedidoService')
+const relatorioService = require('../services/relatorioService')
+const mesService = require('../services/mesService')
+const OpcuaService = require('../services/opcuaService')
 
+// 🔖 Status padronizados
+const STATUS = {
+  INICIADO: 'iniciado',
+  PROCESSANDO: 'em_processamento',
+  PRONTO: 'pronto',
+  CANCELADO: 'cancelado'
+}
+const STATUS_PERMITIDOS = Object.values(STATUS)
 
 // 📦 Cadastrar pedido (cliente logado)
 const cadastrarPedido = async (req, res) => {
@@ -14,13 +25,17 @@ const cadastrarPedido = async (req, res) => {
     if (!req.user?.codigo) {
       return res.status(401).json({ mensagem: 'Usuário não autenticado' })
     }
+
     const cliente = await Cliente.findOne({ codigo: req.user.codigo })
     if (!cliente) {
       return res.status(404).json({ mensagem: 'Cliente não encontrado' })
     }
 
     // Limite de 3 pedidos ativos por cliente
-    const pedidosAtivos = await Pedido.countDocuments({ clienteId: cliente._id, status: 'iniciado' })
+    const pedidosAtivos = await Pedido.countDocuments({
+      clienteId: cliente._id,
+      status: { $in: [STATUS.INICIADO, STATUS.PROCESSANDO] }
+    })
     if (pedidosAtivos >= 3) {
       return res.status(400).json({ mensagem: 'Limite de 3 pedidos ativos atingido' })
     }
@@ -30,6 +45,7 @@ const cadastrarPedido = async (req, res) => {
       return res.status(400).json({ mensagem: 'O pedido deve ter entre 1 e 3 sucos' })
     }
 
+    // Validação de combinações
     const contagem = {}
     for (const item of itens) {
       const q = Number(item.quantidade) || 0
@@ -39,40 +55,19 @@ const cadastrarPedido = async (req, res) => {
       contagem[item.produtoId] = (contagem[item.produtoId] || 0) + q
     }
 
-    const quantidades = Object.values(contagem)
-    const tresSabores = quantidades.length === 3 && quantidades.every(q => q === 1)
-    const tresDeUm = quantidades.length === 1 && quantidades[0] === 3
-    const doisMaisUm = quantidades.length === 2 && quantidades.includes(2) && quantidades.includes(1)
-    const doisDeUm = quantidades.length === 1 && quantidades[0] === 2
-    const umDeUm = quantidades.length === 1 && quantidades[0] === 1
-
-    if (!(tresSabores || tresDeUm || doisMaisUm || doisDeUm || umDeUm)) {
+    if (!pedidoService.validarCombinacao(contagem)) {
       return res.status(400).json({ mensagem: 'Combinação de sucos inválida' })
     }
 
-    const itensConvertidos = []
-
-      for (const item of itens) {
-        const produto = await Produto.findById(item.produtoId)
-        if (!produto) {
-          return res.status(400).json({ mensagem: `Produto ${item.produtoId} não encontrado` })
-        }
-
-        itensConvertidos.push({
-          produtoId: produto._id, // usa o _id do Mongo para salvar
-          quantidade: item.quantidade
-        })
-    }
-
+    const itensConvertidos = await pedidoService.converterItens(itens)
 
     const novoPedido = new Pedido({
       clienteId: cliente._id,
       codigoCliente: cliente.codigo,
-      itens: itensConvertidos, // ✅ agora sim com produtoId como ObjectId
-      status: 'iniciado',
+      itens: itensConvertidos,
+      status: STATUS.INICIADO,
       data: new Date()
-})
-
+    })
 
     await novoPedido.save()
 
@@ -83,22 +78,58 @@ const cadastrarPedido = async (req, res) => {
 
     res.status(201).json({
       mensagem: 'Pedido cadastrado com sucesso',
-      pedido: pedidoPopulado.toObject()   // ✅ garante objeto limpo
+      pedido: pedidoPopulado.toObject()
     })
-
   } catch (err) {
     console.error('❌ Erro ao cadastrar pedido:', err)
     res.status(500).json({ mensagem: 'Erro ao cadastrar pedido', erro: err.message })
   }
 }
 
-// 📋 Listar pedidos (admin ou cliente)
+// 📌 Atualizar status do pedido (Admin → dispara CLP quando em_processamento)
+const atualizarStatusPedido = async (req, res) => {
+  try {
+    const pedido = await Pedido.findById(req.params.id)
+    if (!pedido) {
+      return res.status(404).json({ mensagem: 'Pedido não encontrado' })
+    }
+
+    const novoStatus = req.body.status
+    if (!STATUS_PERMITIDOS.includes(novoStatus)) {
+      return res.status(400).json({ mensagem: 'Status inválido', permitidos: STATUS_PERMITIDOS })
+    }
+
+    if ([STATUS.PRONTO, STATUS.CANCELADO].includes(pedido.status)) {
+      return res.status(400).json({ mensagem: 'Não é possível alterar um pedido já finalizado ou cancelado' })
+    }
+
+    pedido.status = novoStatus
+    await pedido.save()
+
+    if (novoStatus === STATUS.PROCESSANDO) {
+      const opcua = new OpcuaService()
+      await opcua.connect()
+      await opcua.escreverPedido({
+        op: pedido._id.toString(),
+        produto: pedido.itens[0].produtoId._id?.toString() ?? pedido.itens[0].produtoId, // garante campo existente
+        quant: pedido.itens[0].quantidade
+      })
+      await opcua.disconnect()
+    }
+
+    res.json({ mensagem: 'Status atualizado com sucesso', pedido: pedido.toObject() })
+  } catch (err) {
+    console.error('❌ Erro ao atualizar status do pedido:', err)
+    res.status(500).json({ mensagem: 'Erro ao atualizar status', erro: err.message })
+  }
+}
+
+// 📋 Listar pedidos (cliente/admin)
 const listarPedidos = async (req, res) => {
   try {
-    // Se for admin, lista todos; se for cliente, lista só os dele
     const filtro = req.user?.perfil === 'admin'
       ? {}
-      : { clienteId: req.user?.id }
+      : { codigoCliente: req.user?.codigo }
 
     const pedidos = await Pedido.find(filtro)
       .sort({ data: -1 })
@@ -116,7 +147,6 @@ const listarPedidos = async (req, res) => {
     res.status(500).json({ mensagem: 'Erro ao listar pedidos', erro: err.message })
   }
 }
-
 
 // 📜 Histórico de pedidos (cliente)
 const historicoPedidos = async (req, res) => {
@@ -147,86 +177,44 @@ const historicoPedidos = async (req, res) => {
   }
 }
 
-
 // ❌ Cancelar pedido (cliente)
 const cancelarPedido = async (req, res) => {
   try {
-    const { id } = req.params
-    const pedido = await Pedido.findById(id)
-
-    if (!pedido) {
-      return res.status(404).json({ mensagem: 'Pedido não encontrado' })
-    }
-
-    if (pedido.status === 'pronto') {
-      return res.status(400).json({ mensagem: 'Não é possível cancelar um pedido já finalizado' })
-    }
-
-    if (pedido.status === 'cancelado') {
-      return res.status(400).json({ mensagem: 'O pedido já está cancelado' })
-    }
-
-    pedido.status = 'cancelado'
-    await pedido.save()
-
-    // 🔎 Popula cliente e produtos para resposta completa
-    const pedidoPopulado = await pedido.populate([
-      { path: 'clienteId', select: 'codigo nome email perfil' },
-      { path: 'itens.produtoId', select: 'codigo nome preco status' }
-    ])
-
-    res.status(200).json({
-      mensagem: 'Pedido cancelado com sucesso',
-      pedido: pedidoPopulado.toObject()
-    })
+    const pedidoPopulado = await pedidoService.atualizarStatusPedido(
+      req.params.id,
+      STATUS.CANCELADO,
+      [
+        (pedido) => {
+          if (pedido.status === STATUS.PRONTO) throw new Error('Não é possível cancelar um pedido já finalizado')
+          if (pedido.status === STATUS.CANCELADO) throw new Error('O pedido já está cancelado')
+          if (pedido.status === STATUS.PROCESSANDO) throw new Error('Não é possível cancelar um pedido em produção')
+        }
+      ]
+    )
+    res.status(200).json({ mensagem: 'Pedido cancelado com sucesso', pedido: pedidoPopulado.toObject() })
   } catch (err) {
-    console.error('❌ Erro ao cancelar pedido:', err)
-    res.status(500).json({ mensagem: 'Erro ao cancelar pedido', erro: err.message })
+    res.status(400).json({ mensagem: err.message })
   }
 }
-
 
 // ✅ Finalizar pedido (cliente)
 const finalizarPedido = async (req, res) => {
   try {
-    const { id } = req.params
-    const pedido = await Pedido.findById(id)
-
-    if (!pedido) {
-      return res.status(404).json({ mensagem: 'Pedido não encontrado' })
-    }
-
-    if (pedido.status === 'cancelado') {
-      return res.status(400).json({ mensagem: 'Não é possível finalizar um pedido cancelado' })
-    }
-
-    if (pedido.status === 'pronto') {
-      return res.status(400).json({ mensagem: 'O pedido já está finalizado' })
-    }
-
-    pedido.status = 'pronto'
-    await pedido.save()
-
-    // 🔎 Popula cliente e produtos para resposta completa
-    const pedidoPopulado = await pedido.populate([
-      { path: 'clienteId', select: 'codigo nome email perfil' },
-      { path: 'itens.produtoId', select: 'codigo nome preco status' }
-    ])
-
-    res.status(200).json({
-      mensagem: 'Pedido finalizado com sucesso',
-      pedido: pedidoPopulado.toObject()
-    })
+    const pedidoPopulado = await pedidoService.atualizarStatusPedido(
+      req.params.id,
+      STATUS.PRONTO,
+      [
+        (pedido) => {
+          if (pedido.status === STATUS.CANCELADO) throw new Error('Não é possível finalizar um pedido cancelado')
+          if (pedido.status === STATUS.PRONTO) throw new Error('O pedido já está finalizado')
+        }
+      ]
+    )
+    res.status(200).json({ mensagem: 'Pedido finalizado com sucesso', pedido: pedidoPopulado.toObject() })
   } catch (err) {
-    console.error('❌ Erro ao finalizar pedido:', err)
-    res.status(500).json({ mensagem: 'Erro ao finalizar pedido', erro: err.message })
+    res.status(400).json({ mensagem: err.message })
   }
 }
-
-
-// ========================
-// 🔧 Rotas Administrativas
-// ========================
 
 // 📋 Listar todos os pedidos (admin)
 const listarTodosPedidosAdmin = async (req, res) => {
@@ -243,33 +231,38 @@ const listarTodosPedidosAdmin = async (req, res) => {
   }
 }
 
-// ⏩ Antecipar pedido (avanço de status pelo admin)
+// ⏩ Antecipar pedido (admin) — respeita sequência e dispara CLP ao entrar em processamento
 const anteciparPedido = async (req, res) => {
   try {
-    const { id } = req.params
-    const pedido = await Pedido.findById(id)
+    const pedido = await Pedido.findById(req.params.id)
+    if (!pedido) return res.status(404).json({ mensagem: 'Pedido não encontrado' })
 
-    if (!pedido) {
-      return res.status(404).json({ mensagem: 'Pedido não encontrado' })
-    }
-
-    if (pedido.status === 'cancelado') {
+    if (pedido.status === STATUS.CANCELADO) {
       return res.status(400).json({ mensagem: 'Não é possível antecipar um pedido cancelado' })
     }
-
-    if (pedido.status === 'pronto') {
+    if (pedido.status === STATUS.PRONTO) {
       return res.status(400).json({ mensagem: 'O pedido já está pronto e não pode ser antecipado' })
     }
 
-    if (pedido.status === 'iniciado') {
-      pedido.status = 'em_processamento'
-    } else if (pedido.status === 'em_processamento') {
-      pedido.status = 'pronto'
-    }
+    let novoStatus = pedido.status
+    if (pedido.status === STATUS.INICIADO) novoStatus = STATUS.PROCESSANDO
+    else if (pedido.status === STATUS.PROCESSANDO) novoStatus = STATUS.PRONTO
 
+    pedido.status = novoStatus
     await pedido.save()
 
-    res.status(200).json({ mensagem: 'Pedido atualizado com sucesso', pedido })
+    if (novoStatus === STATUS.PROCESSANDO) {
+      const opcua = new OpcuaService()
+      await opcua.connect()
+      await opcua.escreverPedido({
+        op: pedido._id.toString(),
+        produto: pedido.itens[0].produtoId._id?.toString() ?? pedido.itens[0].produtoId,
+        quant: pedido.itens[0].quantidade
+      })
+      await opcua.disconnect()
+    }
+
+    res.status(200).json({ mensagem: 'Pedido atualizado com sucesso', pedido: pedido.toObject() })
   } catch (err) {
     console.error('❌ Erro ao antecipar pedido:', err)
     res.status(500).json({ mensagem: 'Erro ao atualizar pedido', erro: err.message })
@@ -279,11 +272,10 @@ const anteciparPedido = async (req, res) => {
 // 🗑️ Excluir todos os pedidos de um cliente (admin)
 const excluirPedidosClienteAdmin = async (req, res) => {
   try {
-    const { codigoCliente } = req.params
-    const cliente = await Cliente.findOne({ codigo: Number(codigoCliente) })
-    if (!cliente) {
-      return res.status(404).json({ mensagem: 'Cliente não encontrado' })
-    }
+    const codigoCliente = req.params.codigoCliente
+    const cliente = await Cliente.findOne({ codigo: codigoCliente })
+    if (!cliente) return res.status(404).json({ mensagem: 'Cliente não encontrado' })
+
     const resultado = await Pedido.deleteMany({ clienteId: cliente._id })
     res.status(200).json({ mensagem: 'Pedidos do cliente excluídos com sucesso', resultado })
   } catch (err) {
@@ -303,7 +295,6 @@ const limparPedidos = async (req, res) => {
   }
 }
 
-
 // 🧹 Limpar todos os pedidos do cliente logado
 const limparPedidosCliente = async (req, res) => {
   try {
@@ -317,7 +308,6 @@ const limparPedidosCliente = async (req, res) => {
     }
 
     await Pedido.deleteMany({ clienteId: cliente._id })
-
     res.status(200).json({ mensagem: 'Todos os pedidos do cliente foram removidos com sucesso' })
   } catch (err) {
     console.error('❌ Erro ao limpar pedidos do cliente:', err)
@@ -325,142 +315,48 @@ const limparPedidosCliente = async (req, res) => {
   }
 }
 
-
-// 📊 Gerar balancete (admin) — soma das quantidades por produto
+// 📊 Gerar balancete (admin)
 const gerarBalancete = async (req, res) => {
   try {
     const { periodo } = req.query
-    const inicio = calcularDataInicial(periodo)   // já retorna Date
-    if (!inicio) {
-      return res.status(400).json({ mensagem: 'Período inválido. Use: diario, semanal, mensal, bimestral, trimestral, semestral ou anual.' })
-    }
-
-    const resumo = await Pedido.aggregate([
-      { $match: { data: { $gte: inicio } } },
-      { $unwind: "$itens" },
-      {
-        $group: {
-          _id: "$itens.produtoId",
-          quantidadeTotal: { $sum: "$itens.quantidade" }
-        }
-      },
-      {
-        $lookup: {
-          from: "produtos",
-          localField: "_id",
-          foreignField: "_id",
-          as: "produto"
-        }
-      },
-      { $unwind: "$produto" },
-      {
-        $project: {
-          _id: 0,
-          codigo: "$produto.codigo",
-          nome: "$produto.nome",
-          quantidadeTotal: 1
-        }
-      }
-    ])
-
-    res.status(200).json({
-      periodo,
-      desde: inicio.toLocaleDateString('pt-BR'),   // exibe formatado
-      ate: new Date().toLocaleDateString('pt-BR'),
-      resumo
-    })
+    const resultado = await relatorioService.gerarBalancete(periodo)
+    res.status(200).json(resultado)
   } catch (err) {
     console.error('❌ Erro ao gerar balancete:', err)
-    res.status(500).json({ mensagem: 'Erro ao gerar balancete', erro: err.message })
+    res.status(400).json({ mensagem: err.message })
   }
 }
 
-function calcularDataInicial(periodo) {
-  const hoje = new Date()
-  const data = new Date(hoje)
-
-  switch (periodo) {
-    case 'diario': data.setDate(data.getDate() - 1); break
-    case 'semanal': data.setDate(data.getDate() - 7); break
-    case 'mensal': data.setMonth(data.getMonth() - 1); break
-    case 'bimestral': data.setMonth(data.getMonth() - 2); break
-    case 'trimestral': data.setMonth(data.getMonth() - 3); break
-    case 'semestral': data.setMonth(data.getMonth() - 6); break
-    case 'anual': data.setFullYear(data.getFullYear() - 1); break
-    default: return null
-  }
-
-  return data   // 🔑 retorna Date direto
-}
-
-// ========================
 // 🔄 Reordenação MES
-// ========================
 const reordenarFilaMES = async (req, res) => {
   try {
     const { pedidoId } = req.params
-    const pedidos = await Pedido.find({ status: 'iniciado' }).populate('itens.produtoId')
-
-    if (pedidos.length <= 2) {
-      return res.status(400).json({ mensagem: 'Não há pedidos suficientes para reordenação pelo MES' })
-    }
-
-    // Sabores dos dois primeiros pedidos
-    const saboresPrimeiros = new Set()
-    pedidos.slice(0, 2).forEach(p => {
-      p.itens.forEach(i => saboresPrimeiros.add(i.produtoId.nome))
-    })
-
-    // Índice do pedido alvo
-    const pedidoIndex = pedidos.findIndex(p => p._id.toString() === pedidoId)
-    if (pedidoIndex === -1) {
-      return res.status(404).json({ mensagem: 'Pedido não encontrado na fila' })
-    }
-    if (pedidoIndex <= 1) {
-      return res.status(400).json({ mensagem: 'O MES não pode alterar os dois primeiros pedidos' })
-    }
-
-    // Verifica “novo sabor”
-    const saboresPedido = new Set()
-    pedidos[pedidoIndex].itens.forEach(i => saboresPedido.add(i.produtoId.nome))
-    const contemNovoSabor = [...saboresPedido].some(sabor => !saboresPrimeiros.has(sabor))
-
-    if (!contemNovoSabor) {
-      return res.status(403).json({ mensagem: 'O MES não pode antecipar este pedido, pois não contém novos sabores' })
-    }
-
-    // Move para a 2ª posição
-    const [pedidoMovido] = pedidos.splice(pedidoIndex, 1)
-    pedidos.splice(1, 0, pedidoMovido)
-
-    // Persiste posição (se usar posicaoFila no schema)
-    for (let i = 0; i < pedidos.length; i++) {
-      pedidos[i].posicaoFila = i + 1
-      await pedidos[i].save()
-    }
-
-    res.status(200).json({
-      mensagem: 'Fila reordenada pelo MES com sucesso',
-      fila: pedidos
-    })
+    const fila = await mesService.reordenarFilaMES(pedidoId)
+    res.status(200).json({ mensagem: 'Fila reordenada pelo MES com sucesso', fila })
   } catch (err) {
     console.error('❌ Erro ao reordenar fila MES:', err)
     res.status(500).json({ mensagem: 'Erro ao reordenar fila MES', erro: err.message })
   }
 }
 
-// ✅ Exportações
+// ✅ Exportações organizadas
 module.exports = {
+  // Cliente
   cadastrarPedido,
   listarPedidos,
   historicoPedidos,
   cancelarPedido,
-  finalizarPedido,          // 🔹 novo
+  finalizarPedido,
+  limparPedidosCliente,
+
+  // Admin
   listarTodosPedidosAdmin,
   anteciparPedido,
   excluirPedidosClienteAdmin,
   limparPedidos,
-  limparPedidosCliente,     // 🔹 novo
   gerarBalancete,
+  atualizarStatusPedido,
+
+  // MES
   reordenarFilaMES
 }

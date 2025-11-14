@@ -1,44 +1,50 @@
-const express = require('express')
-const router = express.Router()
-const pedidoController = require('../controllers/pedidoController')
-const autenticarToken = require('../middleware/auth')
+// 📂 routes/pedidos.js
+const express = require("express");
+const router = express.Router();
 
-// Middleware para rotas de admin
-function apenasAdmin(req, res, next) {
-  const isAdmin = req.user?.perfil === 'admin' || req.user?.status === 'admin'
-  if (!isAdmin) {
-    return res.status(403).json({ mensagem: 'Acesso restrito a administradores' })
-  }
-  next()
-}
-
+const autenticarToken = require('../middleware/auth');
+const verificarAdmin = require('../middleware/verificarAdmin');
+const verificarSuperAdmin = require('../middleware/verificarSuperAdmin');
+const pedidoController = require("../controllers/pedidoController");
 
 // ========================
-// Rotas Administrativas
+// Rotas de Admin
 // ========================
-router.get('/admin', autenticarToken, apenasAdmin, pedidoController.listarTodosPedidosAdmin)
-router.put('/admin/antecipar/:id', autenticarToken, apenasAdmin, pedidoController.anteciparPedido)
-router.delete('/admin/excluir/:codigoCliente', autenticarToken, apenasAdmin, pedidoController.excluirPedidosClienteAdmin)
-router.delete('/admin/limpar', autenticarToken, apenasAdmin, pedidoController.limparPedidos)
-router.get('/admin/balancete', autenticarToken, apenasAdmin, pedidoController.gerarBalancete)
+
+// Limpar todos os pedidos (Admin)
+router.delete("/admin/limpar", autenticarToken, verificarAdmin, pedidoController.limparPedidos);
+
+// Gerar balancete (Admin)
+router.get("/admin/balancete", autenticarToken, verificarAdmin, pedidoController.gerarBalancete);
+
+// Atualizar status de pedido (Admin → dispara CLP quando status = em_processamento)
+router.put("/admin/:id/status", autenticarToken, verificarAdmin, pedidoController.atualizarStatusPedido);
 
 // ========================
 // Rotas de Cliente
 // ========================
-router.post('/', autenticarToken, pedidoController.cadastrarPedido)
-router.get('/', autenticarToken, pedidoController.listarPedidos)
-router.get('/historico', autenticarToken, pedidoController.historicoPedidos)
-router.patch('/:id/cancelar', autenticarToken, pedidoController.cancelarPedido)
 
-// Finalizar pedido (novo)
-router.patch('/:id/finalizar', autenticarToken, pedidoController.finalizarPedido)
+// Criar novo pedido
+router.post("/", autenticarToken, pedidoController.cadastrarPedido);
 
-// Limpar pedidos do cliente logado (novo)
-router.delete('/limpar', autenticarToken, pedidoController.limparPedidosCliente)
+// Listar pedidos do cliente logado
+router.get("/", autenticarToken, pedidoController.listarPedidos);
+
+// Histórico de pedidos do cliente
+router.get("/historico", autenticarToken, pedidoController.historicoPedidos);
+
+// Cancelar pedido
+router.patch("/:id/cancelar", autenticarToken, pedidoController.cancelarPedido);
+
+// Finalizar pedido
+router.patch("/:id/finalizar", autenticarToken, pedidoController.finalizarPedido);
+
+// Limpar pedidos do cliente logado
+router.delete("/limpar", autenticarToken, pedidoController.limparPedidosCliente);
 
 // ========================
 // Rotas do MES
 // ========================
-router.put('/mes/reordenar/:pedidoId', autenticarToken, pedidoController.reordenarFilaMES)
+router.put("/mes/reordenar/:pedidoId", autenticarToken, pedidoController.reordenarFilaMES);
 
-module.exports = router
+module.exports = router;
