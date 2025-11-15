@@ -1,93 +1,27 @@
-<template>
-  <div class="p-6">
-    <h1 class="text-2xl font-bold mb-4">📦 Meus Pedidos</h1>
-
-    <!-- Lista de pedidos -->
-    <ul v-if="pedidos.length">
-      <li
-        v-for="pedido in pedidos"
-        :key="pedido.id || pedido._id"
-        class="mb-4 border-b pb-4"
-      >
-        <strong>Pedido #{{ pedido.codigoCliente }}</strong>
-
-        <p>
-          🍊 {{ getQuantidade(pedido, 1) }} |
-          🍇 {{ getQuantidade(pedido, 2) }} |
-          🍍 {{ getQuantidade(pedido, 3) }}
-        </p>
-
-        <p>Data: {{ formatarData(pedido.data) }}</p>
-        <p>Status: {{ formatarStatus(pedido.status) }}</p>
-
-        <button
-          v-if="pedido.status === 'iniciado' || pedido.status === 'em_processamento'"
-          @click="cancelarPedido(pedido)"
-          class="bg-[#C8102E] hover:bg-[#E32636] text-white px-3 py-1 rounded mt-2"
-        >
-          ❌ Cancelar
-        </button>
-      </li>
-    </ul>
-
-    <!-- Nenhum pedido -->
-    <p v-else>Nenhum pedido encontrado.</p>
-
-    <!-- Logs -->
-    <div class="mt-6">
-      <h2 class="text-xl font-semibold mb-2">📜 Logs</h2>
-      <ul class="list-disc pl-6">
-        <li v-for="(log, index) in logs" :key="index">{{ log }}</li>
-      </ul>
-    </div>
-  </div>
-</template>
-
 <script setup>
-import { ref, onMounted } from 'vue'
-import { api } from '../services/api'
-import { useUserStore } from '../stores/user'
+import { onMounted } from 'vue'
+import { usePedidosStore } from '../stores/pedidos'
 
-const pedidos = ref([])
-const logs = ref([])
-const userStore = useUserStore()
+const pedidoStore = usePedidosStore()
 
-function authHeaders() {
-  return {
-    headers: { Authorization: `Bearer ${userStore.token}` }
-  }
-}
-
-// 📋 Carregar pedidos
-async function carregarPedidos() {
-  try {
-    const { data } = await api.get('/pedido', authHeaders())
-    console.log('📋 Resposta do backend:', data)
-    pedidos.value = data.pedidos || []
-  } catch (err) {
-    console.error('Erro ao carregar pedidos', err)
-  }
-}
+// 📋 Carregar pedidos ao montar
+onMounted(() => {
+  pedidoStore.carregarPedidos()
+})
 
 // ❌ Cancelar pedido
 async function cancelarPedido(pedido) {
   try {
-    // use pedido.id ou pedido.codigoCliente dependendo do backend
-    const pedidoId = pedido.id || pedido.codigoCliente || pedido._id
-    const { data } = await api.delete(`/pedido/${pedidoId}`, authHeaders())
-
-    pedido.status = 'cancelado'
-    logs.value.push(`Pedido #${pedido.codigoCliente} foi cancelado`)
-    alert(data.mensagem || 'Pedido cancelado com sucesso!')
+    await pedidoStore.cancelarPedido(pedido._id || pedido.id || pedido.codigoCliente)
+    alert(`Pedido #${pedido.codigoCliente} cancelado com sucesso!`)
   } catch (err) {
-    console.error('Erro ao cancelar pedido', err)
-    alert(err.response?.data?.mensagem || 'Erro ao cancelar pedido')
+    alert('Erro ao cancelar pedido')
   }
 }
 
 // 🔎 Quantidade de cada produto
 function getQuantidade(pedido, produtoId) {
-  const item = pedido.itens.find(i => i.produtoId === produtoId || i.produtoId?.id === produtoId)
+  const item = pedido.itens.find(i => i.produtoId === produtoId || i.produtoId?._id === produtoId)
   return item ? item.quantidade : 0
 }
 
@@ -110,7 +44,73 @@ function formatarStatus(status) {
   return mapa[status] || status
 }
 
-onMounted(() => {
-  carregarPedidos()
-})
+// ⚡ Superadmin: excluir todos os pedidos
+async function excluirTodosPedidosSuperadmin() {
+  try {
+    await pedidoStore.excluirTodosPedidosSuperadmin()
+    alert('Todos os pedidos foram excluídos pelo superadmin!')
+  } catch (err) {
+    alert('Erro ao excluir todos os pedidos')
+  }
+}
 </script>
+
+<template>
+  <div class="p-6">
+    <h1 class="text-2xl font-bold mb-4">📦 Meus Pedidos</h1>
+
+    <!-- Feedback de carregamento -->
+    <div v-if="pedidoStore.loading" class="text-gray-500 mb-4">
+      Carregando pedidos...
+    </div>
+
+    <!-- Feedback de erro -->
+    <div v-if="pedidoStore.error" class="text-red-500 mb-4">
+      Erro: {{ pedidoStore.error.message || pedidoStore.error }}
+    </div>
+
+    <!-- Lista de pedidos -->
+    <ul v-if="!pedidoStore.loading && pedidoStore.pedidos.length">
+      <li
+        v-for="pedido in pedidoStore.pedidos"
+        :key="pedido._id || pedido.id"
+        class="mb-4 border-b pb-4"
+      >
+        <strong>Pedido #{{ pedido.codigoCliente }}</strong>
+
+        <p>
+          🍊 {{ getQuantidade(pedido, 1) }} |
+          🍇 {{ getQuantidade(pedido, 2) }} |
+          🍍 {{ getQuantidade(pedido, 3) }}
+        </p>
+
+        <p>Data: {{ formatarData(pedido.data) }}</p>
+        <p>Status: {{ formatarStatus(pedido.status) }}</p>
+
+        <button
+          v-if="pedido.status === 'iniciado' || pedido.status === 'em_processamento'"
+          @click="cancelarPedido(pedido)"
+          :aria-label="`Cancelar pedido ${pedido.codigoCliente}`"
+          class="bg-[#C8102E] hover:bg-[#E32636] text-white px-3 py-1 rounded mt-2"
+        >
+          ❌ Cancelar
+        </button>
+      </li>
+    </ul>
+
+    <!-- Nenhum pedido -->
+    <p v-else-if="!pedidoStore.loading" class="text-gray-500">
+      Você ainda não possui pedidos. Faça seu primeiro pedido e acompanhe aqui!
+    </p>
+
+    <!-- Superadmin: ação global -->
+    <div class="mt-6">
+      <button
+        @click="excluirTodosPedidosSuperadmin"
+        class="bg-black hover:bg-gray-800 text-white px-4 py-2 rounded"
+      >
+        🛑 Superadmin: Excluir todos os pedidos
+      </button>
+    </div>
+  </div>
+</template>

@@ -1,58 +1,33 @@
 <template>
-  <nav class="navbar">
-    <RouterLink to="/" class="nav-link">🛍️ Loja</RouterLink>
-    <RouterLink to="/carrinho" class="nav-link">🛒 Meu Carrinho</RouterLink>
-    <RouterLink to="/meus-pedidos" class="nav-link">📦 Meus Pedidos</RouterLink>
-    <RouterLink to="/login" class="nav-link" v-if="!isAuthenticated">🔑 Entrar / Cadastrar</RouterLink>
-    <RouterLink to="/admin" class="nav-link" v-if="isAdmin">⚙️ Administração</RouterLink>
-    <button v-if="isAuthenticated" @click="logout" class="nav-link">🚪 Sair</button>
+  <nav class="flex gap-4 items-center bg-gray-100 p-4">
+    <RouterLink to="/" class="px-3 py-2 rounded hover:bg-gray-200 transition">🛍️ Loja</RouterLink>
+    <RouterLink to="/carrinho" class="px-3 py-2 rounded hover:bg-gray-200 transition">🛒 Meu Carrinho</RouterLink>
+    <RouterLink to="/meus-pedidos" class="px-3 py-2 rounded hover:bg-gray-200 transition">📦 Meus Pedidos</RouterLink>
+
+    <RouterLink v-if="!userStore.isAuthenticated" to="/login" class="px-3 py-2 rounded hover:bg-gray-200 transition">
+      🔑 Entrar / Cadastrar
+    </RouterLink>
+
+    <RouterLink v-if="userStore.isAdmin" to="/admin" class="px-3 py-2 rounded hover:bg-gray-200 transition">
+      ⚙️ Administração
+    </RouterLink>
+
+    <RouterLink v-if="userStore.isSuperAdmin" to="/superadmin" class="px-3 py-2 rounded hover:bg-gray-200 transition">
+      👑 SuperAdmin
+    </RouterLink>
+
+    <button v-if="userStore.isAuthenticated" @click="logout" class="px-3 py-2 rounded hover:bg-gray-200 transition">
+      🚪 Sair
+    </button>
   </nav>
 </template>
 
 <script setup>
-import { computed } from 'vue'
 import { useUserStore } from '../stores/user'
 
 const userStore = useUserStore()
-
-const isAuthenticated = computed(() => userStore.isAuthenticated)
-const isAdmin = computed(() => userStore.user?.status === 'admin')
 
 function logout() {
   userStore.logout()
 }
 </script>
-
-<style scoped>
-.navbar {
-  background: #333;
-  padding: 1rem;
-  margin-bottom: 1rem;
-  display: flex;
-  flex-wrap: wrap;
-}
-
-.nav-link {
-  margin-right: 1rem;
-  color: white;
-  text-decoration: none;
-  cursor: pointer;
-}
-
-.nav-link.router-link-active,
-.nav-link.router-link-exact-active {
-  font-weight: bold;
-  text-decoration: underline;
-}
-
-@media (max-width: 600px) {
-  .navbar {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .nav-link {
-    margin: 0.5rem 0;
-  }
-}
-</style>
