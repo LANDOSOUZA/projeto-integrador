@@ -13,7 +13,7 @@ onMounted(async () => {
 function adicionarAoCarrinho(produto) {
   if (carrinho.totalQuantidade < 3 && produto.status === 'ativo') {
     carrinho.adicionar({
-      id: produto._id,   // usa o id do backend
+      _id: produto._id,   // usa o id do backend
       nome: produto.nome,
       preco: produto.preco,
       quantidade: 1

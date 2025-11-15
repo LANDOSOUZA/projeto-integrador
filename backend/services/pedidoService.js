@@ -1,4 +1,3 @@
-// services/pedidoService.js
 const Pedido = require('../models/Pedido')
 const Produto = require('../models/Produto')
 const Cliente = require('../models/Cliente')
@@ -53,27 +52,16 @@ async function atualizarStatusPedido(id, novoStatus, validacoes = []) {
   await opcua.connect()
 
   if (novoStatus === 'cancelado') {
-    await opcua.session.write({
-      nodeId: "ns=3;s=cmd.abortar",
-      attributeId: 13,
-      value: { value: { dataType: 1, value: true } }
-    })
+    await opcua.abortarPedido()
   }
 
-  if (novoStatus === 'pronto') {
-    await opcua.session.write({
-      nodeId: "ns=3;s=cmd.fimPed",
-      attributeId: 13,
-      value: { value: { dataType: 1, value: true } }
-    })
+  if (novoStatus === 'finalizado') {
+    // fim da OP → resetar PLC
+    await opcua.resetPLC()
   }
 
   if (novoStatus === 'em_processamento') {
-    await opcua.session.write({
-      nodeId: "ns=3;s=cmd.iniciar",
-      attributeId: 13,
-      value: { value: { dataType: 1, value: true } }
-    })
+    await opcua.iniciarProducao()
   }
 
   await opcua.disconnect()

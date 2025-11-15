@@ -1,4 +1,3 @@
-// services/mesService.js
 const Pedido = require('../models/Pedido')
 const OpcuaService = require('./opcuaService')
 
@@ -47,10 +46,11 @@ async function reordenarFilaMES(pedidoId) {
   const opcua = new OpcuaService()
   await opcua.connect()
 
+  // Reescreve pedidos no CLP usando método de alto nível
   for (const pedido of pedidos) {
     await opcua.escreverPedido({
       op: pedido._id.toString(),
-      produto: pedido.itens[0].produtoId.codigo, // exemplo: código do produto
+      produto: pedido.itens[0].produtoId.codigo, // código do produto
       quant: pedido.itens[0].quantidade
     })
   }
@@ -61,4 +61,3 @@ async function reordenarFilaMES(pedidoId) {
 }
 
 module.exports = { reordenarFilaMES }
-

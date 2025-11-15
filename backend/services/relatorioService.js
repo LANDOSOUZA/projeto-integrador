@@ -5,7 +5,10 @@ async function gerarBalancete(periodo, status = 'finalizado') {
   if (!inicio) {
     return {
       error: 'Período inválido',
-      permitido: ['diario','semanal','mensal','bimestral','trimestral','semestral','anual']
+      permitido: [
+        'diario','semanal','mensal',
+        'bimestral','trimestral','semestral','anual'
+      ]
     }
   }
 
@@ -15,8 +18,17 @@ async function gerarBalancete(periodo, status = 'finalizado') {
   const resumo = await Pedido.aggregate([
     { $match: filtro },
     {
+      $lookup: {
+        from: 'produtos',              // coleção de produtos
+        localField: 'produto',         // campo em Pedido
+        foreignField: '_id',           // campo em Produto
+        as: 'produtoInfo'
+      }
+    },
+    { $unwind: '$produtoInfo' },
+    {
       $group: {
-        _id: '$produto', // campo que indica sabor do suco
+        _id: '$produtoInfo.nome',      // agrupa pelo nome do produto
         pedidosAtendidos: { $sum: 1 },
         quantidadeTotal: { $sum: '$quantidade' }
       }

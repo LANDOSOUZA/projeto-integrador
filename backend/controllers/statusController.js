@@ -1,45 +1,51 @@
-// Troque entre o real e o mock
+// controllers/statusController.js
 const useMock = process.env.USE_MOCK === 'true'
-
 const OpcuaService = useMock
   ? require('../services/opcuaServiceMock')
   : require('../services/opcuaService')
 
-const Status = require('../models/StatusModel')
 const opcua = new OpcuaService()
 
 async function lerStatus(req, res) {
   try {
     await opcua.connect()
 
-    const geral = await opcua.lerStatusGeral()
-    const accSinc = await opcua.lerAccSinc()
-    const opAtual = await opcua.lerOpAtual()
-
-    const falhaAtiva = await opcua.lerFalhaAtiva()
-    const falhaAtivaCod = await opcua.lerFalhaAtivaCod()
-
-    const abacaxiDisponivel = await opcua.lerDisponibilidade('abacaxi')
-    const laranjaDisponivel = await opcua.lerDisponibilidade('laranja')
-    const uvaDisponivel = await opcua.lerDisponibilidade('uva')
-
-    const mesProd = await opcua.lerMesProd()
-    const mesFalt = await opcua.lerMesFalt()
-    const mesUltimoCiclo = await opcua.lerMesUltimoCiclo()
-    const mesTempInicio = await opcua.lerMesTempInicio()
-    const mesTempFim = await opcua.lerMesTempFim()
-    const mesPcsBoas = await opcua.lerMesPcsBoas()
-    const mesPcsRuins = await opcua.lerMesPcsRuins()
-
-    const status = new Status({
+    // Lê todas as variáveis em paralelo para reduzir latência
+    const [
       geral,
       accSinc,
       opAtual,
       falhaAtiva,
       falhaAtivaCod,
-      abacaxiDisponivel,
-      laranjaDisponivel,
-      uvaDisponivel,
+      mesProd,
+      mesFalt,
+      mesUltimoCiclo,
+      mesTempInicio,
+      mesTempFim,
+      mesPcsBoas,
+      mesPcsRuins
+    ] = await Promise.all([
+      opcua.lerStatusGeral(),
+      opcua.lerAccSinc(),
+      opcua.lerOpAtual(),
+      opcua.lerFalhaAtiva(),
+      opcua.lerFalhaAtivaCod(),
+      opcua.lerMesProd(),
+      opcua.lerMesFalt(),
+      opcua.lerMesUltimoCiclo(),
+      opcua.lerMesTempInicio(),
+      opcua.lerMesTempFim(),
+      opcua.lerMesPcsBoas(),
+      opcua.lerMesPcsRuins()
+    ])
+
+    // Retorna JSON pronto para o frontend
+    res.json({
+      geral,
+      accSinc,
+      opAtual,
+      falhaAtiva,
+      falhaAtivaCod,
       mesProd,
       mesFalt,
       mesUltimoCiclo,
@@ -48,10 +54,11 @@ async function lerStatus(req, res) {
       mesPcsBoas,
       mesPcsRuins
     })
-
-    res.json(status)
   } catch (err) {
-    res.status(500).json({ error: 'Erro ao consultar status', details: err.message })
+    res.status(500).json({
+      error: 'Erro ao consultar status',
+      details: err.message
+    })
   } finally {
     try { await opcua.disconnect() } catch {}
   }

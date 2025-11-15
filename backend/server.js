@@ -14,6 +14,7 @@ import pedidoRoutes from './routes/pedido.js'
 import adminRoutes from './routes/admin.js'
 import statusRoutes from './routes/statusRouter.js'
 import relatorioRoutes from './routes/relatorioRouter.js'
+import clpRoutes from './routes/clpRouter.js' // ✅ nova rota CLP
 
 // Seeds
 import garantirProdutosBase from './utils/garantirProdutosBase.js'
@@ -24,6 +25,7 @@ const app = express()
 const PORT = process.env.PORT || 3000
 const MONGO_URL = process.env.MONGO_URL || process.env.MONGO_URI
 
+// Middlewares globais
 app.use(cors())
 app.use(express.json())
 
@@ -38,6 +40,9 @@ app.use('/relatorios', autenticarToken, relatorioRoutes)
 
 // Rotas de admin
 app.use('/admin', autenticarToken, verificarAdmin, adminRoutes)
+
+// Rotas de controle CLP (SuperAdmin)
+app.use('/clp', autenticarToken, clpRoutes)
 
 // Conexão com MongoDB
 mongoose.connect(MONGO_URL)
