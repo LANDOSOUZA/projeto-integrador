@@ -1,26 +1,22 @@
 <template>
-  <nav class="navbar">
-    <RouterLink to="/" class="nav-link">🛍️ Loja</RouterLink>
-    <RouterLink to="/carrinho" class="nav-link">🛒 Meu Carrinho</RouterLink>
-    <RouterLink to="/meus-pedidos" class="nav-link">📦 Meus Pedidos</RouterLink>
+  <nav class="flex gap-4 items-center bg-gray-100 p-4">
+    <RouterLink to="/" class="px-3 py-2 rounded hover:bg-gray-200 transition">🛍️ Loja</RouterLink>
+    <RouterLink to="/carrinho" class="px-3 py-2 rounded hover:bg-gray-200 transition">🛒 Meu Carrinho</RouterLink>
+    <RouterLink to="/meus-pedidos" class="px-3 py-2 rounded hover:bg-gray-200 transition">📦 Meus Pedidos</RouterLink>
 
-    <!-- Mostrar login/cadastro se não autenticado -->
-    <RouterLink to="/login" class="nav-link" v-if="!userStore.isAuthenticated">
+    <RouterLink v-if="!userStore.isAuthenticated" to="/login" class="px-3 py-2 rounded hover:bg-gray-200 transition">
       🔑 Entrar / Cadastrar
     </RouterLink>
 
-    <!-- Admin e Superadmin -->
-    <RouterLink v-if="userStore.isAdmin" to="/admin" class="nav-link">
+    <RouterLink v-if="userStore.isAdmin" to="/admin" class="px-3 py-2 rounded hover:bg-gray-200 transition">
       ⚙️ Administração
     </RouterLink>
 
-    <!-- Exclusivo Superadmin -->
-    <RouterLink v-if="userStore.isSuperAdmin" to="/superadmin" class="nav-link">
+    <RouterLink v-if="userStore.isSuperAdmin" to="/superadmin" class="px-3 py-2 rounded hover:bg-gray-200 transition">
       👑 SuperAdmin
     </RouterLink>
 
-    <!-- Logout -->
-    <button v-if="userStore.isAuthenticated" @click="logout" class="nav-link">
+    <button v-if="userStore.isAuthenticated" @click="logout" class="px-3 py-2 rounded hover:bg-gray-200 transition">
       🚪 Sair
     </button>
   </nav>
@@ -35,4 +31,3 @@ function logout() {
   userStore.logout()
 }
 </script>
-

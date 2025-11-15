@@ -20,11 +20,12 @@ const cadastrarCliente = async (req, res) => {
     const ultimo = await Cliente.findOne().sort('-codigo')
     const codigo = ultimo ? ultimo.codigo + 1 : 1
 
+    // ✅ Não precisa aplicar bcrypt.hash aqui, o pre('save') já faz isso
     const novoCliente = new Cliente({
       codigo,
       nome,
       email,
-      senha,
+      senha,          // senha em texto puro, será convertida em hash pelo modelo
       status: 'usuario'
     })
 
@@ -43,7 +44,6 @@ const cadastrarCliente = async (req, res) => {
       { expiresIn: '24h' }
     )
 
-    // 🔹 Agora retorna também token e user
     res.status(201).json({
       mensagem: 'Cliente cadastrado com sucesso',
       token,
@@ -59,11 +59,11 @@ const cadastrarCliente = async (req, res) => {
     res.status(500).json({ mensagem: 'Erro ao cadastrar cliente', erro: err.message })
   }
 }
-// 🔐 Login do cliente (corrigido)
+
+
 const loginCliente = async (req, res) => {
   try {
     const { email, senha } = req.body
-
     if (!email || !senha) {
       return res.status(400).json({ mensagem: 'E-mail e senha são obrigatórios' })
     }
@@ -73,35 +73,24 @@ const loginCliente = async (req, res) => {
       return res.status(404).json({ mensagem: 'Cliente não encontrado' })
     }
 
-    const senhaValida = await cliente.compararSenha(senha)
-    if (!senhaValida) {
+    if (!(await cliente.compararSenha(senha))) {
       return res.status(401).json({ mensagem: 'Senha inválida' })
     }
 
-    // Gera token JWT com payload básico
-    const token = jwt.sign(
-      {
-        id: cliente._id,
-        codigo: cliente.codigo,
-        nome: cliente.nome,
-        email: cliente.email,
-        status: cliente.status
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: '24h' }
-    )
+    const payload = {
+      id: cliente._id,
+      codigo: cliente.codigo,
+      nome: cliente.nome,
+      email: cliente.email,
+      status: cliente.status
+    }
 
-    // 🔹 Agora retorna também os dados do cliente
+    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '24h' })
+
     res.status(200).json({
       mensagem: 'Login realizado com sucesso',
       token,
-      user: {
-        id: cliente._id,
-        codigo: cliente.codigo,
-        nome: cliente.nome,
-        email: cliente.email,
-        status: cliente.status
-      }
+      user: payload
     })
   } catch (err) {
     console.error('❌ Erro no login:', err)

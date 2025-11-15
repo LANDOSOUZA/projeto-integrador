@@ -1,4 +1,3 @@
-// 📂 src/stores/pedido.js
 import { defineStore } from 'pinia'
 import pedidoService from '../services/pedidoService'
 
@@ -11,89 +10,95 @@ export const usePedidosStore = defineStore('pedidos', {
   }),
 
   actions: {
+    setErro(err) {
+      console.error(err)
+      this.error = err
+    },
+
     // ============================
     // 📌 Funcionalidades do Cliente
     // ============================
 
-    // Carregar pedidos do cliente logado
     async carregarPedidos() {
       this.loading = true
+      this.error = null
       try {
         const { data } = await pedidoService.listarPedidos()
         this.pedidos = data.pedidos
+        return data.pedidos
       } catch (err) {
-        this.error = err
+        this.setErro(err)
+        throw err
       } finally {
         this.loading = false
       }
     },
 
-    // Adicionar novo pedido
     async adicionarPedido(itens) {
+      this.error = null
       try {
         const { data } = await pedidoService.cadastrarPedido(itens)
         this.pedidos.push(data.pedido)
         return data.pedido
       } catch (err) {
-        this.error = err
+        this.setErro(err)
         throw err
       }
     },
 
-    // Cancelar pedido (cliente ou admin)
     async cancelarPedido(id) {
+      const index = this.pedidos.findIndex(p => p._id === id)
+      const anterior = [...this.pedidos]
+      if (index !== -1) this.pedidos[index].status = 'cancelado'
       try {
         const { data } = await pedidoService.cancelarPedido(id)
-        const pedidoIndex = this.pedidos.findIndex(p => p._id === id)
-        if (pedidoIndex !== -1) {
-          this.pedidos[pedidoIndex] = data.pedido
-        }
+        this.pedidos[index] = data.pedido
         return data.pedido
       } catch (err) {
-        this.error = err
+        this.setErro(err)
+        this.pedidos = anterior
         throw err
       }
     },
 
-    // Finalizar pedido (CLP)
     async finalizarPedido(id) {
       try {
         const { data } = await pedidoService.finalizarPedido(id)
-        const pedidoIndex = this.pedidos.findIndex(p => p._id === id)
-        if (pedidoIndex !== -1) {
-          this.pedidos[pedidoIndex] = data.pedido
+        const index = this.pedidos.findIndex(p => p._id === id)
+        if (index !== -1) this.pedidos[index] = data.pedido
+        if (data.pedido.status === 'finalizado') {
+          this.historico.push(data.pedido)
         }
         return data.pedido
       } catch (err) {
-        this.error = err
+        this.setErro(err)
         throw err
       }
     },
 
-    // Atualizar status genérico
     async atualizarStatus(id, novoStatus) {
       try {
         const { data } = await pedidoService.atualizarPedido(id, { status: novoStatus })
-        const pedidoIndex = this.pedidos.findIndex(p => p._id === id)
-        if (pedidoIndex !== -1) {
-          this.pedidos[pedidoIndex] = data.pedido
-        }
+        const index = this.pedidos.findIndex(p => p._id === id)
+        if (index !== -1) this.pedidos[index] = data.pedido
+        return data.pedido
       } catch (err) {
-        this.error = err
+        this.setErro(err)
+        throw err
       }
     },
 
-    // Carregar histórico do cliente
     async carregarHistorico() {
       try {
         const { data } = await pedidoService.historicoPedidos()
         this.historico = data.pedidos
+        return data.pedidos
       } catch (err) {
-        this.error = err
+        this.setErro(err)
+        throw err
       }
     },
 
-    // Limpar pedidos do cliente logado
     async limparPedidosCliente() {
       try {
         const { data } = await pedidoService.limparPedidosCliente()
@@ -101,7 +106,7 @@ export const usePedidosStore = defineStore('pedidos', {
         this.historico = []
         return data
       } catch (err) {
-        this.error = err
+        this.setErro(err)
         throw err
       }
     },
@@ -110,50 +115,75 @@ export const usePedidosStore = defineStore('pedidos', {
     // 📌 Funcionalidades do Admin
     // ============================
 
-    // Listar todos os pedidos (Admin)
     async listarTodosPedidosAdmin() {
+      this.error = null
       try {
         const { data } = await pedidoService.listarTodosPedidosAdmin()
         this.pedidos = data.pedidos
+        return data.pedidos
       } catch (err) {
-        this.error = err
+        this.setErro(err)
         throw err
       }
     },
 
-    // Liberar pedido para CLP (Admin)
     async liberarPedido(id) {
       try {
         const { data } = await pedidoService.liberarPedido(id)
-        const pedidoIndex = this.pedidos.findIndex(p => p._id === id)
-        if (pedidoIndex !== -1) {
-          this.pedidos[pedidoIndex] = data.pedido
-        }
-        return data.pedido.status
+        const index = this.pedidos.findIndex(p => p._id === id)
+        if (index !== -1) this.pedidos[index] = data.pedido
+        return data.pedido
       } catch (err) {
-        this.error = err
+        this.setErro(err)
         throw err
       }
     },
 
-    // Excluir todos os pedidos de um cliente (Admin)
     async excluirPedidosClienteAdmin(codigoCliente) {
       try {
         await pedidoService.excluirPedidosClienteAdmin(codigoCliente)
         this.pedidos = this.pedidos.filter(p => p.codigoCliente !== codigoCliente)
+        return this.pedidos
       } catch (err) {
-        this.error = err
+        this.setErro(err)
         throw err
       }
     },
 
-    // Limpar todos os pedidos do sistema (Admin)
     async limparPedidos() {
       try {
         await pedidoService.limparPedidos()
         this.pedidos = []
+        return []
       } catch (err) {
-        this.error = err
+        this.setErro(err)
+        throw err
+      }
+    },
+
+    // ============================
+    // 📌 Funcionalidades do Superadmin
+    // ============================
+
+    async listarTodosPedidosSuperadmin() {
+      try {
+        const { data } = await pedidoService.listarTodosPedidosSuperadmin()
+        this.pedidos = data.pedidos
+        return data.pedidos
+      } catch (err) {
+        this.setErro(err)
+        throw err
+      }
+    },
+
+    async excluirTodosPedidosSuperadmin() {
+      try {
+        await pedidoService.excluirTodosPedidosSuperadmin()
+        this.pedidos = []
+        this.historico = []
+        return []
+      } catch (err) {
+        this.setErro(err)
         throw err
       }
     }

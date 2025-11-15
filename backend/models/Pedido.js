@@ -1,11 +1,16 @@
-const mongoose = require('mongoose')
+const mongoose = require('mongoose');
 
 const pedidoSchema = new mongoose.Schema({
   clienteId: { 
     type: mongoose.Schema.Types.ObjectId, 
     ref: 'Cliente', 
     required: true 
-  }, // referência ao cliente no banco
+  },
+
+  ordem: { 
+    type: Number, 
+    required: true 
+  }, // posição na fila
 
   codigoCliente: { 
     type: Number, 
@@ -39,10 +44,10 @@ const pedidoSchema = new mongoose.Schema({
   }
 }, { 
   timestamps: true // cria automaticamente createdAt e updatedAt
-})
+});
 
 // Índices úteis para performance em consultas
-pedidoSchema.index({ codigoCliente: 1 })
-pedidoSchema.index({ data: -1 })
+pedidoSchema.index({ codigoCliente: 1 });
+pedidoSchema.index({ data: -1 });
 
-module.exports = mongoose.model('Pedido', pedidoSchema)
+module.exports = mongoose.model('Pedido', pedidoSchema);

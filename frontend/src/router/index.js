@@ -1,60 +1,49 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { useUserStore } from '../stores/user'
 
-// Importar as views (páginas)
-import Produtos from '../views/Produtos.vue'
+// Importar componentes
 import Carrinho from '../views/Carrinho.vue'
-import Login from '../views/Login.vue'
-import Cadastro from '../views/Cadastro.vue'
 import MeusPedidos from '../views/MeusPedidos.vue'
-import Admin from '../views/Admin.vue'
-import SuperAdmin from '../views/SuperAdmin.vue'
-import NotFound from '../views/NotFound.vue' // Página 404
+import Login from '../views/Login.vue'
+import AdminPrincipal from '../views/Admin.vue'
+import SuperAdminPrincipal from '../views/SuperAdmin.vue'
 
-const clienteRoutes = [
-  { path: '/', name: 'Produtos', component: Produtos },
-  { path: '/carrinho', name: 'Carrinho', component: Carrinho },
-  { path: '/login', name: 'Login', component: Login },
-  { path: '/cadastro', name: 'Cadastro', component: Cadastro },
-  { path: '/meus-pedidos', name: 'MeusPedidos', component: MeusPedidos }
+const routes = [
+  { path: '/', component: MeusPedidos }, // 👈 página inicial agora é MeusPedidos
+  { path: '/carrinho', component: Carrinho },
+  { path: '/meus-pedidos', component: MeusPedidos },
+  { path: '/login', component: Login },
+
+  // Rotas protegidas
+  { path: '/admin', component: AdminPrincipal },
+  { path: '/superadmin', component: SuperAdminPrincipal }
 ]
-
-const adminRoutes = [
-  { path: '/admin', name: 'Admin', component: Admin },
-  { path: '/superadmin', name: 'SuperAdmin', component: SuperAdmin }
-]
-
-const fallbackRoute = [
-  { path: '/:pathMatch(.*)*', name: 'NotFound', component: NotFound }
-]
-
-const routes = [...clienteRoutes, ...adminRoutes, ...fallbackRoute]
 
 const router = createRouter({
   history: createWebHistory(),
   routes
 })
 
-// Proteção de rota administrativa
+// 🔒 Guard global de autenticação e roles
 router.beforeEach((to, from, next) => {
-  const token = localStorage.getItem('token')
-  const user = JSON.parse(localStorage.getItem('user') || '{}')
+  const userStore = useUserStore()
 
-  console.log('Token:', token)
-  console.log('User:', user)
-
-  // Proteção para Admin
-  if (to.name === 'Admin' && (!token || !['admin','superadmin'].includes(user.status))) {
+  // Se rota é /admin → precisa ser admin ou superadmin
+  if (to.path.startsWith('/admin') && !userStore.isAdmin) {
     return next('/login')
   }
 
-  // Proteção para SuperAdmin
-  if (to.name === 'SuperAdmin' && (!token || user.status !== 'superadmin')) {
+  // Se rota é /superadmin → precisa ser superadmin
+  if (to.path.startsWith('/superadmin') && !userStore.isSuperAdmin) {
+    return next('/login')
+  }
+
+  // Se rota é protegida e não autenticado → redireciona
+  if ((to.path.startsWith('/admin') || to.path.startsWith('/superadmin')) && !userStore.isAuthenticated) {
     return next('/login')
   }
 
   next()
 })
 
-
 export default router
-

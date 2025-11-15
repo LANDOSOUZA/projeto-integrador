@@ -20,6 +20,13 @@ router.get("/admin/balancete", autenticarToken, verificarAdmin, pedidoController
 // Atualizar status de pedido (Admin → dispara CLP quando status = em_processamento)
 router.put("/admin/:id/status", autenticarToken, verificarAdmin, pedidoController.atualizarStatusPedido);
 
+// Antecipar pedido (Admin)
+router.put("/admin/antecipar/:id", autenticarToken, verificarAdmin, pedidoController.anteciparPedido);
+
+router.put("/admin/atualizar/:id", autenticarToken, verificarAdmin, pedidoController.atualizarStatusPedido);
+
+
+
 // ========================
 // Rotas de Cliente
 // ========================

@@ -1,31 +1,32 @@
-<!-- src/views/NotFound.vue -->
-<template>
-  <div class="not-found">
-    <h1>404 - Página não encontrada</h1>
-    <p>Desculpe, o endereço que você acessou não existe.</p>
-    <RouterLink to="/">Voltar para a loja</RouterLink>
-  </div>
-</template>
+// 📂 src/services/api.js
+import axios from 'axios'
 
-<script setup>
-// Nenhuma lógica necessária por enquanto
-</script>
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000',
+  timeout: 10000
+})
 
-<style scoped>
-.not-found {
-  text-align: center;
-  padding: 2rem;
-}
+// Interceptor para incluir o token em todas as requisições
+api.interceptors.request.use(config => {
+  const token = localStorage.getItem('token')
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
+}, error => Promise.reject(error))
 
-.not-found h1 {
-  font-size: 2rem;
-  color: #c00;
-}
+// Interceptor de resposta para tratar erros globais
+api.interceptors.response.use(
+  response => response,
+  error => {
+    const status = error.response?.status
+    if (status === 401 || status === 403) {
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      window.location.href = '/login' // 👈 redireciona automaticamente
+    }
+    return Promise.reject(error)
+  }
+)
 
-.not-found a {
-  display: inline-block;
-  margin-top: 1rem;
-  color: #007bff;
-  text-decoration: underline;
-}
-</style>
+export default api

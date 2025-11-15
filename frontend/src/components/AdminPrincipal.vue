@@ -8,8 +8,8 @@ const novoAdmin = ref({ nome: '', email: '', senha: '' })
 async function criarNovoAdmin() {
   try {
     await adminStore.criarAdmin(novoAdmin.value)
-    alert('✅ Admin criado com sucesso!')
     novoAdmin.value = { nome: '', email: '', senha: '' }
+    alert('✅ Admin criado com sucesso!')
   } catch {
     alert('❌ Erro ao criar admin')
   }
@@ -41,10 +41,19 @@ onMounted(() => adminStore.listarAdmins())
 
     <ul>
       <li v-for="admin in adminStore.admins" :key="admin._id" class="flex justify-between items-center border-b py-2">
-        <span>{{ admin.nome }} — {{ admin.email }}</span>
-        <button @click="excluirAdmin(admin._id)" class="bg-red-500 text-white px-2 py-1 rounded">
-          🗑️ Excluir
-        </button>
+        <span>{{ admin.nome }} — {{ admin.email }} ({{ admin.status }})</span>
+        <div class="flex gap-2">
+          <button @click="excluirAdmin(admin._id)" class="bg-red-500 text-white px-2 py-1 rounded">
+            🗑️ Excluir
+          </button>
+          <button 
+            v-if="admin.status === 'admin'" 
+            @click="adminStore.atualizarRoleUsuario(admin._id, 'superadmin')" 
+            class="bg-blue-500 text-white px-2 py-1 rounded"
+          >
+            🔄 Promover
+          </button>
+        </div>
       </li>
     </ul>
 

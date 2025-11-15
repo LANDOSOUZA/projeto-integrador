@@ -1,30 +1,43 @@
 import api from './api' // seu axios configurado com baseURL
+import jwtDecode from 'jwt-decode'
+import authHeader from './authHeader'
 
 const authService = {
   async login(email, senha) {
-    // Faz a requisição de login para o backend
     const { data } = await api.post('/login', { email, senha })
-
-    // Salva o token no localStorage
     localStorage.setItem('token', data.token)
-
-    // Retorna os dados do usuário para o store
+    localStorage.setItem('role', data.usuario.role) // salva papel do usuário
     return data.usuario
   },
 
   logout() {
-    // Remove o token do localStorage
     localStorage.removeItem('token')
+    localStorage.removeItem('role')
   },
 
   getToken() {
-    // Recupera o token salvo
     return localStorage.getItem('token')
   },
 
+  getRole() {
+    return localStorage.getItem('role')
+  },
+
   isAuthenticated() {
-    // Verifica se existe token válido
-    return !!localStorage.getItem('token')
+    const token = localStorage.getItem('token')
+    if (!token) return false
+    try {
+      const { exp } = jwtDecode(token)
+      return Date.now() < exp * 1000
+    } catch {
+      return false
+    }
+  },
+
+  async refreshToken() {
+    const { data } = await api.post('/refresh', {}, { headers: authHeader() })
+    localStorage.setItem('token', data.token)
+    return data.token
   }
 }
 

@@ -1,5 +1,4 @@
 // utils/criarAdminBase.js
-const bcrypt = require('bcrypt')
 const Cliente = require('../models/Cliente')
 
 async function criarAdminBase() {
@@ -14,14 +13,12 @@ async function criarAdminBase() {
       return
     }
 
-    // Cria hash da senha
-    const senhaHash = await bcrypt.hash(senhaAdmin, 10)
-
-    // Cria novo admin com senha hash
+    // Cria novo admin com senha pura (o hook do schema vai hashá-la)
     const novoAdmin = new Cliente({
+      codigo: 1,                // superadmin inicial sempre com código 1
       nome: "Lando Souza",
       email: emailAdmin,
-      senha: senhaHash,   // importante: salvar o hash
+      senha: senhaAdmin,        // senha pura, será hashada pelo pre('save')
       status: "superadmin"
     })
 

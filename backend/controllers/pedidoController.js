@@ -15,6 +15,17 @@ const STATUS = {
 const STATUS_PERMITIDOS = Object.values(STATUS)
 
 // 📦 Cadastrar pedido (cliente logado)
+const Counter = require('../models/Counter')
+
+async function gerarOrdemPedido() {
+  const counter = await Counter.findOneAndUpdate(
+    { nome: 'pedido' },
+    { $inc: { seq: 1 } },
+    { new: true, upsert: true }
+  )
+  return counter.seq
+}
+
 const cadastrarPedido = async (req, res) => {
   try {
     const { itens } = req.body
@@ -61,12 +72,16 @@ const cadastrarPedido = async (req, res) => {
 
     const itensConvertidos = await pedidoService.converterItens(itens)
 
+    // 🔢 Gerar ordem sequencial usando Counter
+    const ordem = await gerarOrdemPedido()
+
     const novoPedido = new Pedido({
       clienteId: cliente._id,
       codigoCliente: cliente.codigo,
       itens: itensConvertidos,
       status: STATUS.INICIADO,
-      data: new Date()
+      data: new Date(),
+      ordem // posição na fila
     })
 
     await novoPedido.save()
@@ -86,43 +101,79 @@ const cadastrarPedido = async (req, res) => {
   }
 }
 
-// 📌 Atualizar status do pedido (Admin → dispara CLP quando em_processamento)
-const atualizarStatusPedido = async (req, res) => {
+
+// ⏩ Antecipar pedido na fila (Admin)
+const anteciparPedido = async (req, res) => {
   try {
+    const { passos = 1 } = req.body // quantas posições antecipar (default = 1)
     const pedido = await Pedido.findById(req.params.id)
+
     if (!pedido) {
       return res.status(404).json({ mensagem: 'Pedido não encontrado' })
     }
 
+    if ([STATUS.CANCELADO, STATUS.PRONTO].includes(pedido.status)) {
+      return res.status(400).json({ mensagem: 'Não é possível antecipar este pedido' })
+    }
+
+    // Ajusta a ordem (quanto menor, mais cedo na fila)
+    pedido.ordem = Math.max(1, pedido.ordem - passos)
+    await pedido.save()
+
+    res.status(200).json({
+      mensagem: `Pedido antecipado ${passos} posição(ões) na fila`,
+      pedido: pedido.toObject()
+    })
+  } catch (err) {
+    console.error('❌ Erro ao antecipar pedido:', err)
+    res.status(500).json({ mensagem: 'Erro ao antecipar pedido', erro: err.message })
+  }
+}
+
+
+// 📌 Atualizar status do pedido (Admin → dispara CLP quando em_processamento)
+const atualizarStatusPedido = async (req, res) => {
+  try {
+    const { id } = req.params
     const novoStatus = req.body.status
+
     if (!STATUS_PERMITIDOS.includes(novoStatus)) {
       return res.status(400).json({ mensagem: 'Status inválido', permitidos: STATUS_PERMITIDOS })
+    }
+
+    const pedido = await Pedido.findById(id)
+    if (!pedido) {
+      return res.status(404).json({ mensagem: 'Pedido não encontrado' })
     }
 
     if ([STATUS.PRONTO, STATUS.CANCELADO].includes(pedido.status)) {
       return res.status(400).json({ mensagem: 'Não é possível alterar um pedido já finalizado ou cancelado' })
     }
 
-    pedido.status = novoStatus
-    await pedido.save()
+    const pedidoAtualizado = await Pedido.findByIdAndUpdate(
+      id,
+      { status: novoStatus },
+      { new: true, runValidators: true }
+    )
 
-    if (novoStatus === STATUS.PROCESSANDO) {
-      const opcua = new OpcuaService()
-      await opcua.connect()
-      await opcua.escreverPedido({
-        op: pedido._id.toString(),
-        produto: pedido.itens[0].produtoId._id?.toString() ?? pedido.itens[0].produtoId, // garante campo existente
-        quant: pedido.itens[0].quantidade
-      })
-      await opcua.disconnect()
-    }
+    //if (novoStatus === STATUS.PROCESSANDO) {
+    //  const opcua = new OpcuaService()
+    //  await opcua.connect()
+    //  await opcua.escreverPedido({
+        //op: pedidoAtualizado._id.toString(),
+        //produto: pedidoAtualizado.itens[0].produtoId._id?.toString() ?? pedidoAtualizado.itens[0].produtoId,
+        //quant: pedidoAtualizado.itens[0].quantidade
+      //})
+      //await opcua.disconnect()
+    //}
 
-    res.json({ mensagem: 'Status atualizado com sucesso', pedido: pedido.toObject() })
+    res.json({ mensagem: 'Status atualizado com sucesso', pedido: pedidoAtualizado.toObject() })
   } catch (err) {
     console.error('❌ Erro ao atualizar status do pedido:', err)
     res.status(500).json({ mensagem: 'Erro ao atualizar status', erro: err.message })
   }
 }
+
 
 // 📋 Listar pedidos (cliente/admin)
 const listarPedidos = async (req, res) => {
@@ -132,7 +183,7 @@ const listarPedidos = async (req, res) => {
       : { codigoCliente: req.user?.codigo }
 
     const pedidos = await Pedido.find(filtro)
-      .sort({ data: -1 })
+      .sort({ prioridade: -1, codigoCliente: 1 })
       .populate([
         { path: 'clienteId', select: 'codigo nome email perfil' },
         { path: 'itens.produtoId', select: 'codigo nome preco status' }
@@ -232,7 +283,7 @@ const listarTodosPedidosAdmin = async (req, res) => {
 }
 
 // ⏩ Antecipar pedido (admin) — respeita sequência e dispara CLP ao entrar em processamento
-const anteciparPedido = async (req, res) => {
+const mudarStatusPedido = async (req, res) => {
   try {
     const pedido = await Pedido.findById(req.params.id)
     if (!pedido) return res.status(404).json({ mensagem: 'Pedido não encontrado' })
@@ -352,10 +403,10 @@ module.exports = {
   // Admin
   listarTodosPedidosAdmin,
   anteciparPedido,
+  atualizarStatusPedido,
   excluirPedidosClienteAdmin,
   limparPedidos,
   gerarBalancete,
-  atualizarStatusPedido,
 
   // MES
   reordenarFilaMES

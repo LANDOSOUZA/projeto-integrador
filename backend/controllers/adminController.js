@@ -1,8 +1,8 @@
-import Usuario from '../models/Cliente.js'
-import bcrypt from 'bcrypt'
+const Usuario = require('../models/Cliente')
+const bcrypt = require('bcrypt')
 
 // Criar novo admin ou superadmin
-export async function criarAdmin(req, res) {
+async function criarAdmin(req, res) {
   try {
     const statusAtual = req.user?.status
     if (statusAtual !== 'superadmin') {
@@ -22,10 +22,11 @@ export async function criarAdmin(req, res) {
       return res.status(400).json({ mensagem: 'Status inválido.' })
     }
 
+    // ⚠️ Não aplicar bcrypt.hash aqui — o modelo já faz isso no pre('save')
     const novoAdmin = new Usuario({
       nome,
       email,
-      senha: await bcrypt.hash(senha, 10),
+      senha,   // texto puro, o modelo aplica hash
       status
     })
 
@@ -37,7 +38,7 @@ export async function criarAdmin(req, res) {
 }
 
 // Listar todos os admins e superadmins
-export async function listarAdmins(req, res) {
+async function listarAdmins(req, res) {
   try {
     const statusAtual = req.user?.status
     if (statusAtual !== 'admin' && statusAtual !== 'superadmin') {
@@ -52,7 +53,7 @@ export async function listarAdmins(req, res) {
 }
 
 // Excluir admin
-export async function excluirAdmin(req, res) {
+async function excluirAdmin(req, res) {
   try {
     const statusAtual = req.user?.status
     if (statusAtual !== 'superadmin') {
@@ -67,3 +68,8 @@ export async function excluirAdmin(req, res) {
   }
 }
 
+module.exports = {
+  criarAdmin,
+  listarAdmins,
+  excluirAdmin
+}

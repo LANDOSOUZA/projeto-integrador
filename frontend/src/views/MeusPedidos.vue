@@ -43,14 +43,34 @@ function formatarStatus(status) {
   }
   return mapa[status] || status
 }
+
+// ⚡ Superadmin: excluir todos os pedidos
+async function excluirTodosPedidosSuperadmin() {
+  try {
+    await pedidoStore.excluirTodosPedidosSuperadmin()
+    alert('Todos os pedidos foram excluídos pelo superadmin!')
+  } catch (err) {
+    alert('Erro ao excluir todos os pedidos')
+  }
+}
 </script>
 
 <template>
   <div class="p-6">
     <h1 class="text-2xl font-bold mb-4">📦 Meus Pedidos</h1>
 
+    <!-- Feedback de carregamento -->
+    <div v-if="pedidoStore.loading" class="text-gray-500 mb-4">
+      Carregando pedidos...
+    </div>
+
+    <!-- Feedback de erro -->
+    <div v-if="pedidoStore.error" class="text-red-500 mb-4">
+      Erro: {{ pedidoStore.error.message || pedidoStore.error }}
+    </div>
+
     <!-- Lista de pedidos -->
-    <ul v-if="pedidoStore.pedidos.length">
+    <ul v-if="!pedidoStore.loading && pedidoStore.pedidos.length">
       <li
         v-for="pedido in pedidoStore.pedidos"
         :key="pedido._id || pedido.id"
@@ -70,6 +90,7 @@ function formatarStatus(status) {
         <button
           v-if="pedido.status === 'iniciado' || pedido.status === 'em_processamento'"
           @click="cancelarPedido(pedido)"
+          :aria-label="`Cancelar pedido ${pedido.codigoCliente}`"
           class="bg-[#C8102E] hover:bg-[#E32636] text-white px-3 py-1 rounded mt-2"
         >
           ❌ Cancelar
@@ -78,6 +99,18 @@ function formatarStatus(status) {
     </ul>
 
     <!-- Nenhum pedido -->
-    <p v-else>Nenhum pedido encontrado.</p>
+    <p v-else-if="!pedidoStore.loading" class="text-gray-500">
+      Você ainda não possui pedidos. Faça seu primeiro pedido e acompanhe aqui!
+    </p>
+
+    <!-- Superadmin: ação global -->
+    <div class="mt-6">
+      <button
+        @click="excluirTodosPedidosSuperadmin"
+        class="bg-black hover:bg-gray-800 text-white px-4 py-2 rounded"
+      >
+        🛑 Superadmin: Excluir todos os pedidos
+      </button>
+    </div>
   </div>
 </template>

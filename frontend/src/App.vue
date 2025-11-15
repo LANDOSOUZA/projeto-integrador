@@ -13,10 +13,11 @@
 <script setup>
 import Navbar from './components/Navbar.vue'
 import { useRoute } from 'vue-router'
+import { computed } from 'vue'
 
 const route = useRoute()
 const rotasSemNavbar = ['/login', '/login-cadastro']
-const exibirNavbar = !rotasSemNavbar.includes(route.path)
+
+// ✅ Computed para reatividade
+const exibirNavbar = computed(() => !rotasSemNavbar.includes(route.path))
 </script>
-
-

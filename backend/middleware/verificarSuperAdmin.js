@@ -1,4 +1,4 @@
-// middleware/verificarSuperAdmin.js
+// middleware/verificarSuperadmin.js
 function verificarSuperAdmin(req, res, next) {
   if (req.user?.status !== 'superadmin') {
     console.warn(`Acesso negado: usuário ${req.user?.email || 'desconhecido'} tentou acessar rota de superadmin`)
