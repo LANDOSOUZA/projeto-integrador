@@ -56,7 +56,7 @@ mongoose.connect(MONGO_URL)
     console.log('🍹 Produtos base garantidos')
 
     await criarAdminBase()
-    console.log('👑 Admin root garantido')
+    console.log('👑 SuperAdmin root garantido')
 
     app.listen(PORT, () => {
       console.log(`🚀 Servidor rodando na porta ${PORT}`)
