@@ -1,34 +1,38 @@
+// 📂 src/views/Admin.vue
 <script setup>
 import PedidosPainel from '../components/PedidosPainel.vue'
 import ProdutosPainel from '../components/ProdutosPainel.vue'
 import UsuariosPainel from '../components/UsuariosPainel.vue'
-import axios from 'axios'
+import { useToast } from 'vue-toastification'
+import clpService from '../services/clpService'   // ✅ novo service
+
+const toast = useToast()
 
 // --- 🔌 Controle CLP ---
 async function iniciarProducao() {
   try {
-    await axios.post('/clp/iniciar')
-    alert('🚀 Produção iniciada!')
+    await clpService.iniciarProducao()
+    toast.success('🚀 Produção iniciada!')
   } catch (err) {
-    alert('❌ Erro ao iniciar produção')
+    toast.error('❌ Erro ao iniciar produção')
   }
 }
 
 async function resetPLC() {
   try {
-    await axios.post('/clp/reset')
-    alert('🔄 PLC resetado!')
+    await clpService.resetPLC()
+    toast.success('🔄 PLC resetado!')
   } catch (err) {
-    alert('❌ Erro ao resetar PLC')
+    toast.error('❌ Erro ao resetar PLC')
   }
 }
 
 async function abortarPedido() {
   try {
-    await axios.post('/clp/abortar')
-    alert('🛑 Pedido abortado!')
+    await clpService.abortarPedido()
+    toast.success('🛑 Pedido abortado!')
   } catch (err) {
-    alert('❌ Erro ao abortar pedido')
+    toast.error('❌ Erro ao abortar pedido')
   }
 }
 </script>

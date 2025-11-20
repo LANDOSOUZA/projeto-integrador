@@ -1,5 +1,7 @@
+// 📂 src/controllers/pedidoController.js
 const Pedido = require('../models/Pedido')
 const Cliente = require('../models/Cliente')
+const Counter = require('../models/Counter')
 const pedidoService = require('../services/pedidoService')
 const relatorioService = require('../services/relatorioService')
 const mesService = require('../services/mesService')
@@ -14,9 +16,7 @@ const STATUS = {
 }
 const STATUS_PERMITIDOS = Object.values(STATUS)
 
-// 📦 Cadastrar pedido (cliente logado)
-const Counter = require('../models/Counter')
-
+// 🔢 Gerar ordem sequencial usando Counter
 async function gerarOrdemPedido() {
   const counter = await Counter.findOneAndUpdate(
     { nome: 'pedido' },
@@ -26,6 +26,7 @@ async function gerarOrdemPedido() {
   return counter.seq
 }
 
+// 📦 Cadastrar pedido (cliente logado)
 const cadastrarPedido = async (req, res) => {
   try {
     const { itens } = req.body
@@ -51,6 +52,7 @@ const cadastrarPedido = async (req, res) => {
       return res.status(400).json({ mensagem: 'Limite de 3 pedidos ativos atingido' })
     }
 
+    // Validação de quantidade total
     const total = itens.reduce((acc, item) => acc + (Number(item.quantidade) || 0), 0)
     if (total < 1 || total > 3) {
       return res.status(400).json({ mensagem: 'O pedido deve ter entre 1 e 3 sucos' })
@@ -65,15 +67,15 @@ const cadastrarPedido = async (req, res) => {
       }
       contagem[item.produtoId] = (contagem[item.produtoId] || 0) + q
     }
-
     if (!pedidoService.validarCombinacao(contagem)) {
       return res.status(400).json({ mensagem: 'Combinação de sucos inválida' })
     }
 
-    const itensConvertidos = await pedidoService.converterItens(itens)
+    console.log('REQ BODY:', req.body)
 
-    // 🔢 Gerar ordem sequencial usando Counter
+    const itensConvertidos = await pedidoService.converterItens(itens)
     const ordem = await gerarOrdemPedido()
+    console.log('Ordem gerada:', ordem)
 
     const novoPedido = new Pedido({
       clienteId: cliente._id,
@@ -81,13 +83,14 @@ const cadastrarPedido = async (req, res) => {
       itens: itensConvertidos,
       status: STATUS.INICIADO,
       data: new Date(),
-      ordem // posição na fila
+      ordem
     })
 
     await novoPedido.save()
+    console.log('Pedido salvo:', novoPedido)
 
     const pedidoPopulado = await novoPedido.populate([
-      { path: 'clienteId', select: 'codigo nome email perfil' },
+      { path: 'clienteId', select: 'codigo nome email status' },
       { path: 'itens.produtoId', select: 'codigo nome preco status' }
     ])
 
@@ -101,35 +104,26 @@ const cadastrarPedido = async (req, res) => {
   }
 }
 
-
 // ⏩ Antecipar pedido na fila (Admin)
 const anteciparPedido = async (req, res) => {
   try {
-    const { passos = 1 } = req.body // quantas posições antecipar (default = 1)
+    const { passos = 1 } = req.body
     const pedido = await Pedido.findById(req.params.id)
-
-    if (!pedido) {
-      return res.status(404).json({ mensagem: 'Pedido não encontrado' })
-    }
+    if (!pedido) return res.status(404).json({ mensagem: 'Pedido não encontrado' })
 
     if ([STATUS.CANCELADO, STATUS.PRONTO].includes(pedido.status)) {
       return res.status(400).json({ mensagem: 'Não é possível antecipar este pedido' })
     }
 
-    // Ajusta a ordem (quanto menor, mais cedo na fila)
     pedido.ordem = Math.max(1, pedido.ordem - passos)
     await pedido.save()
 
-    res.status(200).json({
-      mensagem: `Pedido antecipado ${passos} posição(ões) na fila`,
-      pedido: pedido.toObject()
-    })
+    res.status(200).json({ mensagem: `Pedido antecipado ${passos} posição(ões) na fila`, pedido: pedido.toObject() })
   } catch (err) {
     console.error('❌ Erro ao antecipar pedido:', err)
     res.status(500).json({ mensagem: 'Erro ao antecipar pedido', erro: err.message })
   }
 }
-
 
 // 📌 Atualizar status do pedido (Admin → dispara CLP quando em_processamento)
 const atualizarStatusPedido = async (req, res) => {
@@ -142,57 +136,47 @@ const atualizarStatusPedido = async (req, res) => {
     }
 
     const pedido = await Pedido.findById(id)
-    if (!pedido) {
-      return res.status(404).json({ mensagem: 'Pedido não encontrado' })
-    }
+    if (!pedido) return res.status(404).json({ mensagem: 'Pedido não encontrado' })
 
     if ([STATUS.PRONTO, STATUS.CANCELADO].includes(pedido.status)) {
       return res.status(400).json({ mensagem: 'Não é possível alterar um pedido já finalizado ou cancelado' })
     }
 
-    const pedidoAtualizado = await Pedido.findByIdAndUpdate(
-      id,
-      { status: novoStatus },
-      { new: true, runValidators: true }
-    )
+    pedido.status = novoStatus
+    await pedido.save()
 
-    //if (novoStatus === STATUS.PROCESSANDO) {
-    //  const opcua = new OpcuaService()
-    //  await opcua.connect()
-    //  await opcua.escreverPedido({
-        //op: pedidoAtualizado._id.toString(),
-        //produto: pedidoAtualizado.itens[0].produtoId._id?.toString() ?? pedidoAtualizado.itens[0].produtoId,
-        //quant: pedidoAtualizado.itens[0].quantidade
-      //})
-      //await opcua.disconnect()
-    //}
+    if (novoStatus === STATUS.PROCESSANDO) {
+      const opcua = new OpcuaService()
+      await opcua.connect()
+      await opcua.escreverPedido({
+        op: pedido._id.toString(),
+        produto: pedido.itens[0].produtoId._id?.toString() ?? pedido.itens[0].produtoId,
+        quant: pedido.itens[0].quantidade
+      })
+      await opcua.disconnect()
+    }
 
-    res.json({ mensagem: 'Status atualizado com sucesso', pedido: pedidoAtualizado.toObject() })
+    res.json({ mensagem: 'Status atualizado com sucesso', pedido: pedido.toObject() })
   } catch (err) {
     console.error('❌ Erro ao atualizar status do pedido:', err)
     res.status(500).json({ mensagem: 'Erro ao atualizar status', erro: err.message })
   }
 }
 
-
 // 📋 Listar pedidos (cliente/admin)
 const listarPedidos = async (req, res) => {
   try {
-    const filtro = req.user?.perfil === 'admin'
-      ? {}
-      : { codigoCliente: req.user?.codigo }
+    const isAdmin = req.user?.status === 'admin' || req.user?.status === 'superadmin'
+    const filtro = isAdmin ? {} : { codigoCliente: req.user?.codigo }
 
     const pedidos = await Pedido.find(filtro)
-      .sort({ prioridade: -1, codigoCliente: 1 })
+      .sort({ ordem: 1 })
       .populate([
-        { path: 'clienteId', select: 'codigo nome email perfil' },
+        { path: 'clienteId', select: 'codigo nome email status' },
         { path: 'itens.produtoId', select: 'codigo nome preco status' }
       ])
 
-    res.status(200).json({
-      mensagem: 'Pedidos listados com sucesso',
-      pedidos: pedidos.map(p => p.toObject())
-    })
+    res.status(200).json({ mensagem: 'Pedidos listados com sucesso', pedidos: pedidos.map(p => p.toObject()) })
   } catch (err) {
     console.error('❌ Erro ao listar pedidos:', err)
     res.status(500).json({ mensagem: 'Erro ao listar pedidos', erro: err.message })
@@ -202,26 +186,19 @@ const listarPedidos = async (req, res) => {
 // 📜 Histórico de pedidos (cliente)
 const historicoPedidos = async (req, res) => {
   try {
-    if (!req.user?.codigo) {
-      return res.status(401).json({ mensagem: 'Usuário não autenticado' })
-    }
+    if (!req.user?.codigo) return res.status(401).json({ mensagem: 'Usuário não autenticado' })
 
     const cliente = await Cliente.findOne({ codigo: req.user.codigo })
-    if (!cliente) {
-      return res.status(404).json({ mensagem: 'Cliente não encontrado' })
-    }
+    if (!cliente) return res.status(404).json({ mensagem: 'Cliente não encontrado' })
 
     const pedidos = await Pedido.find({ clienteId: cliente._id })
       .sort({ data: -1 })
       .populate([
-        { path: 'clienteId', select: 'codigo nome email perfil' },
+        { path: 'clienteId', select: 'codigo nome email status' },
         { path: 'itens.produtoId', select: 'codigo nome preco status' }
       ])
 
-    res.status(200).json({
-      mensagem: 'Histórico de pedidos recuperado com sucesso',
-      pedidos: pedidos.map(p => p.toObject())
-    })
+    res.status(200).json({ mensagem: 'Histórico de pedidos recuperado com sucesso', pedidos: pedidos.map(p => p.toObject()) })
   } catch (err) {
     console.error('❌ Erro ao buscar histórico de pedidos:', err)
     res.status(500).json({ mensagem: 'Erro ao buscar histórico de pedidos', erro: err.message })
@@ -267,11 +244,11 @@ const finalizarPedido = async (req, res) => {
   }
 }
 
-// 📋 Listar todos os pedidos (admin)
+// 📋 Listar todos os pedidos (admin) — opcional
 const listarTodosPedidosAdmin = async (req, res) => {
   try {
     const pedidos = await Pedido.find()
-      .populate('clienteId', 'codigo nome email perfil')
+      .populate('clienteId', 'codigo nome email status')
       .populate('itens.produtoId', 'codigo nome preco status')
       .sort({ data: -1 })
 
@@ -279,44 +256,6 @@ const listarTodosPedidosAdmin = async (req, res) => {
   } catch (err) {
     console.error('❌ Erro ao buscar todos os pedidos:', err)
     res.status(500).json({ mensagem: 'Erro ao buscar todos os pedidos', erro: err.message })
-  }
-}
-
-// ⏩ Antecipar pedido (admin) — respeita sequência e dispara CLP ao entrar em processamento
-const mudarStatusPedido = async (req, res) => {
-  try {
-    const pedido = await Pedido.findById(req.params.id)
-    if (!pedido) return res.status(404).json({ mensagem: 'Pedido não encontrado' })
-
-    if (pedido.status === STATUS.CANCELADO) {
-      return res.status(400).json({ mensagem: 'Não é possível antecipar um pedido cancelado' })
-    }
-    if (pedido.status === STATUS.PRONTO) {
-      return res.status(400).json({ mensagem: 'O pedido já está pronto e não pode ser antecipado' })
-    }
-
-    let novoStatus = pedido.status
-    if (pedido.status === STATUS.INICIADO) novoStatus = STATUS.PROCESSANDO
-    else if (pedido.status === STATUS.PROCESSANDO) novoStatus = STATUS.PRONTO
-
-    pedido.status = novoStatus
-    await pedido.save()
-
-    if (novoStatus === STATUS.PROCESSANDO) {
-      const opcua = new OpcuaService()
-      await opcua.connect()
-      await opcua.escreverPedido({
-        op: pedido._id.toString(),
-        produto: pedido.itens[0].produtoId._id?.toString() ?? pedido.itens[0].produtoId,
-        quant: pedido.itens[0].quantidade
-      })
-      await opcua.disconnect()
-    }
-
-    res.status(200).json({ mensagem: 'Pedido atualizado com sucesso', pedido: pedido.toObject() })
-  } catch (err) {
-    console.error('❌ Erro ao antecipar pedido:', err)
-    res.status(500).json({ mensagem: 'Erro ao atualizar pedido', erro: err.message })
   }
 }
 

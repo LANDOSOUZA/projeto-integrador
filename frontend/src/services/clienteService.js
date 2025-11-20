@@ -1,25 +1,41 @@
 // 📂 src/services/clienteService.js
-import api from './api';
-import authHeader from './authHeader';
+import api from './api'
+import authHeader from './authHeader'
 
 export default {
-  async cadastrarCliente(dados) {
-    return api.post('/cliente/cadastrar', dados);   // ✅ corrigido
-  },
-
+  // 🔑 Login de cliente
   async loginCliente(dados) {
-    return api.post('/cliente/login', dados);       // ✅ já estava certo
+    const res = await api.post('/cliente/login', dados)
+    return res.data
   },
 
-  async listarClientes() {
-    return api.get('/cliente/todos', { headers: authHeader() }); // ✅ corrigido
+  // 🆕 Cadastro de cliente
+  async cadastrarCliente(dados) {
+    const res = await api.post('/cliente/cadastrar', dados)
+    return res.data
   },
 
-  async atualizarCliente(id, dados) {
-    return api.put(`/cliente/${id}`, dados, { headers: authHeader() });
+  // 📋 Listar todos os clientes
+  async listarUsuarios() {
+    const res = await api.get('/cliente/todos', { headers: authHeader() })
+    return res.data   // esperado: { usuarios: [...] }
   },
 
-  async excluirCliente(id) {
-    return api.delete(`/cliente/${id}`, { headers: authHeader() });
+  // ⚡ Atualizar papel (role)
+  async atualizarRole(id, role) {
+    const res = await api.put(`/cliente/${id}/role`, { role }, { headers: authHeader() })
+    return res.data
+  },
+
+  // ⚡ Atualizar status (ativo/inativo)
+  async atualizarStatus(id, status) {
+    const res = await api.put(`/cliente/${id}/status`, { status }, { headers: authHeader() })
+    return res.data
+  },
+
+  // ❌ Excluir usuário
+  async excluirUsuario(id) {
+    const res = await api.delete(`/cliente/${id}`, { headers: authHeader() })
+    return res.data
   }
-};
+}

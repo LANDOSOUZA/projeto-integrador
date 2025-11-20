@@ -65,7 +65,7 @@ onMounted(() => carregarUsuarios())
 
     <div v-if="erro" class="text-red-600 mb-2">{{ erro }}</div>
 
-    <table v-if="userStore.usuarios.length" class="w-full border-collapse">
+    <table v-if="userStore.usuarios && userStore.usuarios.length" class="w-full border-collapse">
       <thead>
         <tr class="bg-gray-200">
           <th class="p-2 text-left">Nome</th>
@@ -120,3 +120,4 @@ onMounted(() => carregarUsuarios())
     </div>
   </div>
 </template>
+

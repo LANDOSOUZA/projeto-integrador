@@ -35,6 +35,17 @@ async function cancelarPedido(id) {
   }
 }
 
+async function finalizarCompra(itens) {
+  logs.value.push('Finalizando compra...')
+  try {
+    const response = await pedidoStore.finalizarCompra(itens)
+    logs.value.push(response.mensagem || 'Compra finalizada com sucesso!')
+    await carregarPedidos()
+  } catch (err) {
+    logs.value.push(`Erro ao finalizar compra: ${err.message}`)
+  }
+}
+
 async function excluirPedidosCliente(codigoCliente) {
   if (!confirm('Tem certeza que deseja excluir todos os pedidos deste cliente?')) return
   try {

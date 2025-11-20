@@ -1,40 +1,36 @@
+// 📂 src/routes/opcua.js
 const express = require('express')
 const router = express.Router()
 const OpcuaService = require('../services/opcuaService')
 
 const opcua = new OpcuaService()
 
+// Função auxiliar para executar operações com conexão OPC UA
+async function executarOperacao(res, operacao, mensagemSucesso) {
+  try {
+    await opcua.connect()
+    await operacao()
+    res.status(200).json({ mensagem: mensagemSucesso })
+  } catch (err) {
+    res.status(500).json({ erro: 'Falha na operação OPC UA', detalhes: err.message })
+  } finally {
+    await opcua.disconnect()
+  }
+}
+
+// 🚀 Iniciar produção
 router.post('/iniciar', async (req, res) => {
-  try {
-    await opcua.connect()
-    await opcua.iniciarProducao()
-    await opcua.disconnect()
-    res.json({ message: 'Produção iniciada 🚀' })
-  } catch (err) {
-    res.status(500).json({ error: 'Erro ao iniciar produção', details: err.message })
-  }
+  await executarOperacao(res, () => opcua.iniciarProducao(), 'Produção iniciada 🚀')
 })
 
+// 🔄 Resetar PLC
 router.post('/reset', async (req, res) => {
-  try {
-    await opcua.connect()
-    await opcua.resetPLC()
-    await opcua.disconnect()
-    res.json({ message: 'PLC resetado 🔄' })
-  } catch (err) {
-    res.status(500).json({ error: 'Erro ao resetar PLC', details: err.message })
-  }
+  await executarOperacao(res, () => opcua.resetPLC(), 'PLC resetado 🔄')
 })
 
+// 🛑 Abortar pedido
 router.post('/abortar', async (req, res) => {
-  try {
-    await opcua.connect()
-    await opcua.abortarPedido()
-    await opcua.disconnect()
-    res.json({ message: 'Pedido abortado 🛑' })
-  } catch (err) {
-    res.status(500).json({ error: 'Erro ao abortar pedido', details: err.message })
-  }
+  await executarOperacao(res, () => opcua.abortarPedido(), 'Pedido abortado 🛑')
 })
 
 module.exports = router

@@ -20,11 +20,20 @@ router.get('/perfil', autenticarToken, (req, res) => {
     clienteId: id,
     nome,
     email,
-    perfil
+    status
   })
 })
 
-// Listar todos os clientes (somente admin)
+// Listar todos os clientes (somente admin/superadmin)
 router.get('/todos', autenticarToken, verificarAdmin, clienteController.listarClientes)
+
+// Atualizar papel (role) de um cliente
+router.put('/:id/role', autenticarToken, verificarAdmin, clienteController.atualizarRole)
+
+// Atualizar status de um cliente
+router.put('/:id/status', autenticarToken, verificarAdmin, clienteController.atualizarStatus)
+
+// Excluir cliente
+router.delete('/:id', autenticarToken, verificarAdmin, clienteController.excluirCliente)
 
 export default router

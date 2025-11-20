@@ -1,7 +1,7 @@
 const Cliente = require('../models/Cliente')
 const jwt = require('jsonwebtoken')
 
-// 🧾 Cadastrar novo cliente
+// 🧾 Cadastrar novo cliente (rota pública)
 const cadastrarCliente = async (req, res) => {
   try {
     const { nome, email, senha } = req.body
@@ -10,28 +10,26 @@ const cadastrarCliente = async (req, res) => {
       return res.status(400).json({ mensagem: 'Nome, e-mail e senha são obrigatórios' })
     }
 
-    // Verifica se já existe cliente com esse e-mail
     const existente = await Cliente.findOne({ email })
     if (existente) {
       return res.status(400).json({ mensagem: 'Já existe um cliente com esse e-mail' })
     }
 
-    // Gera código sequencial automaticamente
     const ultimo = await Cliente.findOne().sort('-codigo')
     const codigo = ultimo ? ultimo.codigo + 1 : 1
 
-    // ✅ Não precisa aplicar bcrypt.hash aqui, o pre('save') já faz isso
     const novoCliente = new Cliente({
       codigo,
       nome,
       email,
-      senha,          // senha em texto puro, será convertida em hash pelo modelo
-      status: 'usuario'
+      senha,
+      status: 'usuario',
+      createdAt: new Date(),
+      updatedAt: new Date()
     })
 
     await novoCliente.save()
 
-    // 🔑 Gerar token JWT
     const token = jwt.sign(
       {
         id: novoCliente._id,
@@ -60,7 +58,7 @@ const cadastrarCliente = async (req, res) => {
   }
 }
 
-
+// 🔑 Login de cliente
 const loginCliente = async (req, res) => {
   try {
     const { email, senha } = req.body
@@ -93,25 +91,68 @@ const loginCliente = async (req, res) => {
       user: payload
     })
   } catch (err) {
-    console.error('❌ Erro no login:', err)
     res.status(500).json({ mensagem: 'Erro ao realizar login', erro: err.message })
   }
 }
 
-
-// 📋 Listar todos os clientes (apenas admin)
+// 📋 Listar todos os clientes (apenas admin/superadmin)
 const listarClientes = async (req, res) => {
   try {
+    const statusAtual = req.user?.status
+    if (statusAtual !== 'admin' && statusAtual !== 'superadmin') {
+      return res.status(403).json({ mensagem: 'Apenas administradores podem listar clientes.' })
+    }
+
     const clientes = await Cliente.find().select('-senha').sort({ codigo: 1 })
-    res.status(200).json({ clientes })
+    res.status(200).json({ usuarios: clientes }) // ✅ retorna como "usuarios"
   } catch (err) {
-    console.error('❌ Erro ao listar clientes:', err)
     res.status(500).json({ mensagem: 'Erro ao listar clientes', erro: err.message })
+  }
+}
+
+// ⚡ Atualizar papel (role)
+const atualizarRole = async (req, res) => {
+  try {
+    const { id } = req.params
+    const { role } = req.body
+    const cliente = await Cliente.findByIdAndUpdate(id, { role }, { new: true }).select('-senha')
+    if (!cliente) return res.status(404).json({ mensagem: 'Cliente não encontrado' })
+    res.json({ mensagem: 'Role atualizado com sucesso', cliente })
+  } catch (err) {
+    res.status(500).json({ mensagem: 'Erro ao atualizar role', erro: err.message })
+  }
+}
+
+// ⚡ Atualizar status
+const atualizarStatus = async (req, res) => {
+  try {
+    const { id } = req.params
+    const { status } = req.body
+    const cliente = await Cliente.findByIdAndUpdate(id, { status }, { new: true }).select('-senha')
+    if (!cliente) return res.status(404).json({ mensagem: 'Cliente não encontrado' })
+    res.json({ mensagem: 'Status atualizado com sucesso', cliente })
+  } catch (err) {
+    res.status(500).json({ mensagem: 'Erro ao atualizar status', erro: err.message })
+  }
+}
+
+// ❌ Excluir cliente
+const excluirCliente = async (req, res) => {
+  try {
+    const { id } = req.params
+    const cliente = await Cliente.findByIdAndDelete(id)
+    if (!cliente) return res.status(404).json({ mensagem: 'Cliente não encontrado' })
+    res.json({ mensagem: 'Cliente excluído com sucesso' })
+  } catch (err) {
+    res.status(500).json({ mensagem: 'Erro ao excluir cliente', erro: err.message })
   }
 }
 
 module.exports = {
   cadastrarCliente,
   loginCliente,
-  listarClientes
+  listarClientes,
+  atualizarRole,
+  atualizarStatus,
+  excluirCliente
 }

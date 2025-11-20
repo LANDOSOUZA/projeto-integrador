@@ -1,3 +1,4 @@
+// 📂 src/services/pedidoService.js
 import api from './api'
 import authHeader from './authHeader'
 
@@ -22,8 +23,10 @@ export default {
     return api.patch(`/pedido/${id}/cancelar`, {}, { headers: authHeader() })
   },
 
-  async finalizarPedido(id) {
-    return api.patch(`/pedido/${id}/finalizar`, {}, { headers: authHeader() })
+  async finalizarCompra(itens) {
+  // pedido deve conter clienteId e itens
+  const { data } = await api.post('/pedido', pedido, { headers: authHeader() })
+  return data // deve retornar { mensagem, pedido }
   },
 
   async limparPedidosCliente() {
@@ -43,23 +46,31 @@ export default {
   // ============================
 
   async listarTodosPedidosAdmin() {
-    return api.get('/pedido/admin', { headers: authHeader() })
+    return api.get('/pedido', { headers: authHeader() })
   },
 
   async liberarPedido(id) {
-    return api.patch(`/pedido/admin/liberar/${id}`, {}, { headers: authHeader() })
+    return api.patch(`/pedido/liberar/${id}`, {}, { headers: authHeader() })
   },
 
   async excluirPedidosClienteAdmin(codigoCliente) {
-    return api.delete(`/pedido/admin/excluir/${codigoCliente}`, { headers: authHeader() })
+    return api.delete(`/pedido/excluir/${codigoCliente}`, { headers: authHeader() })
   },
 
   async limparPedidos() {
-    return api.delete('/pedido/admin/limpar', { headers: authHeader() })
+    return api.delete('/pedido/limpar', { headers: authHeader() })
   },
 
   async gerarBalancete(periodo) {
-    return api.get(`/pedido/admin/balancete?periodo=${periodo}`, { headers: authHeader() })
+    return api.get(`/pedido/balancete?periodo=${periodo}`, { headers: authHeader() })
+  },
+
+  async anteciparPedido(id) {
+    return api.put(`/pedido/${id}/antecipar`, {}, { headers: authHeader() })
+  },
+
+  async atualizarStatusPedido(id, status) {
+    return api.put(`/pedido/${id}/status`, { status }, { headers: authHeader() })
   },
 
   // ============================
@@ -79,6 +90,6 @@ export default {
   // ============================
 
   async reordenarFilaMES(pedidoId, dados) {
-    return api.put(`/pedido/mes/reordenar/${pedidoId}`, dados, { headers: authHeader() })
+    return api.put(`/pedido/mes/${pedidoId}/reordenar`, dados, { headers: authHeader() })
   }
 }

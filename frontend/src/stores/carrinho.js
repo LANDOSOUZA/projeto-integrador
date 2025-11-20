@@ -16,7 +16,7 @@ export const useCarrinhoStore = defineStore('carrinho', {
 
   actions: {
     adicionar(produto) {
-      const existente = this.itens.find(item => item._id === produto._id)
+      const existente = this.itens.find(item => item.produtoId === produto._id)
       const totalAtual = this.totalQuantidade
 
       if (totalAtual >= 3) return
@@ -24,18 +24,23 @@ export const useCarrinhoStore = defineStore('carrinho', {
       if (existente) {
         existente.quantidade++
       } else {
-        this.itens.push({ ...produto, quantidade: 1 })
+        this.itens.push({
+          produtoId: produto._id,   // 👉 garante que o backend receba o ID certo
+          nome: produto.nome,
+          preco: produto.preco,
+          quantidade: 1
+        })
       }
     },
 
-    remover(_id) {
-      const item = this.itens.find(i => i._id === _id)
+    remover(produtoId) {
+      const item = this.itens.find(i => i.produtoId === produtoId)
       if (!item) return
 
       if (item.quantidade > 1) {
         item.quantidade--
       } else {
-        this.itens = this.itens.filter(i => i._id !== _id)
+        this.itens = this.itens.filter(i => i.produtoId !== produtoId)
       }
     },
 
@@ -43,6 +48,6 @@ export const useCarrinhoStore = defineStore('carrinho', {
       this.itens = []
     }
   },
-
+  
   persist: true
 })

@@ -1,3 +1,4 @@
+// 📂 src/services/adminService.js
 import api from './api'
 import authHeader from './authHeader'
 
@@ -42,3 +43,4 @@ export default {
     }
   }
 }
+

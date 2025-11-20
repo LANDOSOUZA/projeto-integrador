@@ -1,3 +1,4 @@
+// 📂 src/views/Cadastro.vue
 <template>
   <div class="cadastro">
     <h1>Cadastro</h1>
@@ -33,7 +34,6 @@
   </div>
 </template>
 
-
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
@@ -46,7 +46,6 @@ const senha = ref('')
 const erro = ref('')
 const loading = ref(false)
 const userStore = useUserStore()
-
 
 async function cadastrar() {
   try {

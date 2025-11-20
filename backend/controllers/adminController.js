@@ -1,5 +1,4 @@
 const Usuario = require('../models/Cliente')
-const bcrypt = require('bcrypt')
 
 // Criar novo admin ou superadmin
 async function criarAdmin(req, res) {
@@ -20,6 +19,12 @@ async function criarAdmin(req, res) {
     const statusPermitidos = ['admin', 'superadmin']
     if (!statusPermitidos.includes(status)) {
       return res.status(400).json({ mensagem: 'Status inválido.' })
+    }
+
+    // Verifica duplicação de e-mail
+    const existente = await Usuario.findOne({ email })
+    if (existente) {
+      return res.status(400).json({ mensagem: 'Já existe um usuário com esse e-mail.' })
     }
 
     // ⚠️ Não aplicar bcrypt.hash aqui — o modelo já faz isso no pre('save')
@@ -45,7 +50,7 @@ async function listarAdmins(req, res) {
       return res.status(403).json({ mensagem: 'Apenas administradores podem listar admins.' })
     }
 
-    const admins = await Usuario.find({ status: { $in: ['admin', 'superadmin'] } })
+    const admins = await Usuario.find({ status: { $in: ['admin', 'superadmin'] } }).select('-senha')
     res.status(200).json({ admins })
   } catch (err) {
     res.status(500).json({ mensagem: 'Erro ao listar admins', erro: err.message })
@@ -61,6 +66,17 @@ async function excluirAdmin(req, res) {
     }
 
     const { id } = req.params
+    const admin = await Usuario.findById(id)
+
+    if (!admin) {
+      return res.status(404).json({ mensagem: 'Admin não encontrado.' })
+    }
+
+    // Impedir exclusão do superadmin principal
+    if (admin.status === 'superadmin') {
+      return res.status(400).json({ mensagem: 'Não é permitido excluir o superadmin principal.' })
+    }
+
     await Usuario.findByIdAndDelete(id)
     res.status(200).json({ mensagem: 'Admin excluído com sucesso' })
   } catch (err) {

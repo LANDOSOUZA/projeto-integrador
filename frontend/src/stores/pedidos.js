@@ -1,3 +1,4 @@
+// src/stores/pedidos.js
 import { defineStore } from 'pinia'
 import pedidoService from '../services/pedidoService'
 
@@ -6,26 +7,30 @@ export const usePedidosStore = defineStore('pedidos', {
     pedidos: [],
     historico: [],
     error: null,
-    loading: false
+    loading: false,
+    produtos: []
   }),
 
   actions: {
+    // ============================
+    // 🔧 Utilitário de erro
+    // ============================
     setErro(err) {
-      console.error(err)
+      console.error('[pedidos.store] erro:', err)
       this.error = err
     },
 
     // ============================
     // 📌 Funcionalidades do Cliente
     // ============================
-
+    
     async carregarPedidos() {
       this.loading = true
       this.error = null
       try {
         const { data } = await pedidoService.listarPedidos()
-        this.pedidos = data.pedidos
-        return data.pedidos
+        this.pedidos = Array.isArray(data.pedidos) ? data.pedidos : []
+        return this.pedidos
       } catch (err) {
         this.setErro(err)
         throw err
@@ -34,12 +39,27 @@ export const usePedidosStore = defineStore('pedidos', {
       }
     },
 
+    async listarProdutos() {
+      this.error = null
+      try {
+        const { data } = await pedidoService.listarProdutos()
+        this.produtos = Array.isArray(data.produtos) ? data.produtos : []
+        return this.produtos
+      } catch (err) {
+        this.setErro(err)
+        throw err
+      }
+    },
+
     async adicionarPedido(itens) {
       this.error = null
       try {
         const { data } = await pedidoService.cadastrarPedido(itens)
-        this.pedidos.push(data.pedido)
-        return data.pedido
+        if (data?.pedido) {
+          this.pedidos = [...this.pedidos, data.pedido]
+          return data.pedido
+        }
+        return null
       } catch (err) {
         this.setErro(err)
         throw err
@@ -47,41 +67,64 @@ export const usePedidosStore = defineStore('pedidos', {
     },
 
     async cancelarPedido(id) {
-      const index = this.pedidos.findIndex(p => p._id === id)
-      const anterior = [...this.pedidos]
-      if (index !== -1) this.pedidos[index].status = 'cancelado'
+      this.error = null
+      const idx = this.pedidos.findIndex(p => p._id === id)
+      const snapshot = [...this.pedidos]
+
+      // atualização otimista
+      if (idx !== -1) {
+        this.pedidos[idx] = { ...this.pedidos[idx], status: 'cancelado' }
+        this.pedidos = [...this.pedidos]
+      }
+
       try {
+        // chamada ao backend
         const { data } = await pedidoService.cancelarPedido(id)
-        this.pedidos[index] = data.pedido
-        return data.pedido
+
+        // atualiza com resposta real do backend
+        if (idx !== -1 && (data?.pedido || data)) {
+          this.pedidos[idx] = data.pedido ?? data
+          this.pedidos = [...this.pedidos]
+        }
+
+        return data?.pedido ?? data ?? null
       } catch (err) {
+        // rollback em caso de erro
+        this.pedidos = snapshot
         this.setErro(err)
-        this.pedidos = anterior
         throw err
       }
     },
 
-    async finalizarPedido(id) {
+    // Cliente conclui a compra → cria pedido com status "iniciado"
+    async finalizarCompra(itens) {
+      this.error = null
       try {
-        const { data } = await pedidoService.finalizarPedido(id)
-        const index = this.pedidos.findIndex(p => p._id === id)
-        if (index !== -1) this.pedidos[index] = data.pedido
-        if (data.pedido.status === 'finalizado') {
-          this.historico.push(data.pedido)
+        const { data } = await pedidoService.cadastrarPedido(itens) 
+        if (data?.pedido) {
+          this.pedidos = [...this.pedidos, data.pedido]
         }
-        return data.pedido
+        return {
+          mensagem: data?.mensagem || 'Compra finalizada com sucesso',
+          pedido: data?.pedido || null
+        }
       } catch (err) {
         this.setErro(err)
         throw err
       }
     },
+
 
     async atualizarStatus(id, novoStatus) {
+      this.error = null
       try {
         const { data } = await pedidoService.atualizarPedido(id, { status: novoStatus })
-        const index = this.pedidos.findIndex(p => p._id === id)
-        if (index !== -1) this.pedidos[index] = data.pedido
-        return data.pedido
+        const idx = this.pedidos.findIndex(p => p._id === id)
+        if (idx !== -1 && data?.pedido) {
+          this.pedidos[idx] = data.pedido
+          this.pedidos = [...this.pedidos]
+        }
+        return data?.pedido ?? null
       } catch (err) {
         this.setErro(err)
         throw err
@@ -89,10 +132,11 @@ export const usePedidosStore = defineStore('pedidos', {
     },
 
     async carregarHistorico() {
+      this.error = null
       try {
         const { data } = await pedidoService.historicoPedidos()
-        this.historico = data.pedidos
-        return data.pedidos
+        this.historico = Array.isArray(data.pedidos) ? data.pedidos : []
+        return this.historico
       } catch (err) {
         this.setErro(err)
         throw err
@@ -100,11 +144,12 @@ export const usePedidosStore = defineStore('pedidos', {
     },
 
     async limparPedidosCliente() {
+      this.error = null
       try {
         const { data } = await pedidoService.limparPedidosCliente()
         this.pedidos = []
         this.historico = []
-        return data
+        return data ?? {}
       } catch (err) {
         this.setErro(err)
         throw err
@@ -112,15 +157,50 @@ export const usePedidosStore = defineStore('pedidos', {
     },
 
     // ============================
-    // 📌 Funcionalidades do Admin
+    // 🧩 Manipulação de itens do pedido
     // ============================
+    async excluirItem(pedidoId, itemId) {
+      this.error = null
+      try {
+        const { data } = await pedidoService.excluirItem(pedidoId, itemId)
+        const idx = this.pedidos.findIndex(p => p._id === pedidoId)
+        if (idx !== -1 && data?.pedido) {
+          this.pedidos[idx] = data.pedido
+          this.pedidos = [...this.pedidos]
+        }
+        return data?.pedido ?? null
+      } catch (err) {
+        this.setErro(err)
+        throw err
+      }
+    },
 
+    async atualizarItem(pedidoId, itemId, dados) {
+      // dados pode ser { quantidade: number } ou { delta: number }
+      this.error = null
+      try {
+        const { data } = await pedidoService.atualizarItem(pedidoId, itemId, dados)
+        const idx = this.pedidos.findIndex(p => p._id === pedidoId)
+        if (idx !== -1 && data?.pedido) {
+          this.pedidos[idx] = data.pedido
+          this.pedidos = [...this.pedidos]
+        }
+        return data?.pedido ?? null
+      } catch (err) {
+        this.setErro(err)
+        throw err
+      }
+    },
+
+    // ============================
+    // 👤 Funcionalidades do Admin
+    // ============================
     async listarTodosPedidosAdmin() {
       this.error = null
       try {
         const { data } = await pedidoService.listarTodosPedidosAdmin()
-        this.pedidos = data.pedidos
-        return data.pedidos
+        this.pedidos = Array.isArray(data.pedidos) ? data.pedidos : []
+        return this.pedidos
       } catch (err) {
         this.setErro(err)
         throw err
@@ -128,11 +208,15 @@ export const usePedidosStore = defineStore('pedidos', {
     },
 
     async liberarPedido(id) {
+      this.error = null
       try {
         const { data } = await pedidoService.liberarPedido(id)
-        const index = this.pedidos.findIndex(p => p._id === id)
-        if (index !== -1) this.pedidos[index] = data.pedido
-        return data.pedido
+        const idx = this.pedidos.findIndex(p => p._id === id)
+        if (idx !== -1 && data?.pedido) {
+          this.pedidos[idx] = data.pedido
+          this.pedidos = [...this.pedidos]
+        }
+        return data?.pedido ?? null
       } catch (err) {
         this.setErro(err)
         throw err
@@ -140,6 +224,7 @@ export const usePedidosStore = defineStore('pedidos', {
     },
 
     async excluirPedidosClienteAdmin(codigoCliente) {
+      this.error = null
       try {
         await pedidoService.excluirPedidosClienteAdmin(codigoCliente)
         this.pedidos = this.pedidos.filter(p => p.codigoCliente !== codigoCliente)
@@ -151,6 +236,7 @@ export const usePedidosStore = defineStore('pedidos', {
     },
 
     async limparPedidos() {
+      this.error = null
       try {
         await pedidoService.limparPedidos()
         this.pedidos = []
@@ -162,14 +248,14 @@ export const usePedidosStore = defineStore('pedidos', {
     },
 
     // ============================
-    // 📌 Funcionalidades do Superadmin
+    // Funcionalidades do Superadmin
     // ============================
-
     async listarTodosPedidosSuperadmin() {
+      this.error = null
       try {
         const { data } = await pedidoService.listarTodosPedidosSuperadmin()
-        this.pedidos = data.pedidos
-        return data.pedidos
+        this.pedidos = Array.isArray(data.pedidos) ? data.pedidos : []
+        return this.pedidos
       } catch (err) {
         this.setErro(err)
         throw err
@@ -177,6 +263,7 @@ export const usePedidosStore = defineStore('pedidos', {
     },
 
     async excluirTodosPedidosSuperadmin() {
+      this.error = null
       try {
         await pedidoService.excluirTodosPedidosSuperadmin()
         this.pedidos = []
@@ -186,6 +273,35 @@ export const usePedidosStore = defineStore('pedidos', {
         this.setErro(err)
         throw err
       }
+    }
+  },
+
+  // ============================
+  // Getters de formatação e cálculo
+  // ============================
+  getters: {
+    formatarStatus: () => (status) => {
+      const mapa = {
+        iniciado: 'iniciado',
+        em_processamento: 'em_processamento',
+        pronto: 'pronto',
+        cancelado: 'cancelado'
+      }
+      return mapa[status] || status
+    },
+
+    formatarData: () => (data) => {
+      return new Date(data).toLocaleString('pt-BR', {
+        dateStyle: 'short',
+        timeStyle: 'short'
+      })
+    },
+
+    getQuantidade: () => (pedido, produtoId) => {
+      const item = pedido?.itens?.find(
+        i => i.produtoId === produtoId || i.produtoId?._id === produtoId
+      )
+      return item ? item.quantidade : 0
     }
   }
 })

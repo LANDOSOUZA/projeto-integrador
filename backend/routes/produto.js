@@ -1,19 +1,18 @@
+// 📂 src/routes/produto.js
 const express = require('express')
 const router = express.Router()
 const produtoController = require('../controllers/produtoController')
 const autenticarToken = require('../middleware/auth')
 const verificarAdmin = require('../middleware/verificarAdmin')
 
-// Rota pública para listar produtos
-router.get('/', produtoController.listarProdutos)
+// 📦 Rotas públicas (catálogo)
+router.get('/', produtoController.listarProdutos)          // Listar todos os produtos
+router.get('/:id', produtoController.buscarProduto)        // Buscar produto por ID sequencial
 
-// Buscar produto por id sequencial
-router.get('/:id', produtoController.buscarProduto)
-
-// Rotas protegidas (admin)
-router.post('/cadastrar', autenticarToken, verificarAdmin, produtoController.cadastrarProduto)
-router.put('/:id', autenticarToken, verificarAdmin, produtoController.atualizarProduto)
-router.patch('/:id/status', autenticarToken, verificarAdmin, produtoController.atualizarStatusProduto)
-router.delete('/:id', autenticarToken, verificarAdmin, produtoController.excluirProduto)
+// 🔒 Rotas protegidas (somente admin)
+router.post('/cadastrar', autenticarToken, verificarAdmin, produtoController.cadastrarProduto)   // Cadastrar novo produto
+router.put('/:id', autenticarToken, verificarAdmin, produtoController.atualizarProduto)          // Atualizar produto
+router.patch('/:id/status', autenticarToken, verificarAdmin, produtoController.atualizarStatusProduto) // Atualizar status (ativo/inativo)
+router.delete('/:id', autenticarToken, verificarAdmin, produtoController.excluirProduto)         // Excluir produto
 
 module.exports = router

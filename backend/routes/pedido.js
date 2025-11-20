@@ -1,10 +1,9 @@
-// 📂 routes/pedidos.js
+// 📂 src/routes/pedidos.js
 const express = require("express");
 const router = express.Router();
 
 const autenticarToken = require('../middleware/auth');
 const verificarAdmin = require('../middleware/verificarAdmin');
-const verificarSuperAdmin = require('../middleware/verificarSuperAdmin');
 const pedidoController = require("../controllers/pedidoController");
 
 // ========================
@@ -21,17 +20,13 @@ router.get("/admin/balancete", autenticarToken, verificarAdmin, pedidoController
 router.put("/admin/:id/status", autenticarToken, verificarAdmin, pedidoController.atualizarStatusPedido);
 
 // Antecipar pedido (Admin)
-router.put("/admin/antecipar/:id", autenticarToken, verificarAdmin, pedidoController.anteciparPedido);
-
-router.put("/admin/atualizar/:id", autenticarToken, verificarAdmin, pedidoController.atualizarStatusPedido);
-
-
+router.put("/admin/:id/antecipar", autenticarToken, verificarAdmin, pedidoController.anteciparPedido);
 
 // ========================
 // Rotas de Cliente
 // ========================
 
-// Criar novo pedido
+// Criar novo pedido (com regra de máximo 3 pedidos iniciados)
 router.post("/", autenticarToken, pedidoController.cadastrarPedido);
 
 // Listar pedidos do cliente logado
@@ -52,6 +47,6 @@ router.delete("/limpar", autenticarToken, pedidoController.limparPedidosCliente)
 // ========================
 // Rotas do MES
 // ========================
-router.put("/mes/reordenar/:pedidoId", autenticarToken, pedidoController.reordenarFilaMES);
+router.put("/mes/:pedidoId/reordenar", autenticarToken, pedidoController.reordenarFilaMES);
 
 module.exports = router;

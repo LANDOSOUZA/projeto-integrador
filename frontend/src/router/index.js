@@ -8,6 +8,8 @@ import MeusPedidos from '../views/MeusPedidos.vue'
 import Login from '../views/Login.vue'
 import AdminPrincipal from '../views/Admin.vue'
 import SuperAdminPrincipal from '../views/SuperAdmin.vue'
+import Cadastro from '../views/Cadastro.vue'
+
 
 const routes = [
   { path: '/', component: Produtos },
@@ -15,6 +17,7 @@ const routes = [
   { path: '/carrinho', component: Carrinho, meta: { requiresAuth: true } },
   { path: '/meus-pedidos', component: MeusPedidos, meta: { requiresAuth: true } },
   { path: '/login', component: Login },
+  { path: '/cadastro', component: Cadastro },   // ✅ rota adicionada
   { path: '/admin', component: AdminPrincipal, meta: { requiresAuth: true, role: 'admin' } },
   { path: '/superadmin', component: SuperAdminPrincipal, meta: { requiresAuth: true, role: 'superadmin' } }
 ]

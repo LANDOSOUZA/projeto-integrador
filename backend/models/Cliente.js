@@ -19,10 +19,15 @@ const ClienteSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  status: {
+  role: { // 👥 papel do usuário
     type: String,
-    enum: ['usuario', 'admin', 'superadmin'], // ✅ agora aceita superadmin
+    enum: ['usuario', 'admin', 'superadmin'],
     default: 'usuario'
+  },
+  status: { // ⚡ situação da conta
+    type: String,
+    enum: ['ativo', 'inativo'],
+    default: 'ativo'
   }
 }, { timestamps: true })
 

@@ -1,8 +1,12 @@
 <script setup>
 import { onMounted } from 'vue'
 import { usePedidosStore } from '../stores/pedidos'
+import { useUserStore } from '../stores/user'
+import { useToast } from 'vue-toastification'
 
 const pedidoStore = usePedidosStore()
+const userStore = useUserStore()
+const toast = useToast()
 
 // 📋 Carregar pedidos ao montar
 onMounted(() => {
@@ -12,45 +16,20 @@ onMounted(() => {
 // ❌ Cancelar pedido
 async function cancelarPedido(pedido) {
   try {
-    await pedidoStore.cancelarPedido(pedido._id || pedido.id || pedido.codigoCliente)
-    alert(`Pedido #${pedido.codigoCliente} cancelado com sucesso!`)
+    await pedidoStore.cancelarPedido(pedido._id)   // ✅ usa sempre o _id
+    toast.success(`✅ Pedido #${pedido.codigoCliente} cancelado com sucesso!`)
   } catch (err) {
-    alert('Erro ao cancelar pedido')
+    toast.error('❌ Erro ao cancelar pedido')
   }
-}
-
-// 🔎 Quantidade de cada produto
-function getQuantidade(pedido, produtoId) {
-  const item = pedido.itens.find(i => i.produtoId === produtoId || i.produtoId?._id === produtoId)
-  return item ? item.quantidade : 0
-}
-
-// 🗓️ Formatar data
-function formatarData(data) {
-  return new Date(data).toLocaleString('pt-BR', {
-    dateStyle: 'short',
-    timeStyle: 'short'
-  })
-}
-
-// 🔖 Formatar status
-function formatarStatus(status) {
-  const mapa = {
-    iniciado: 'Iniciado',
-    em_processamento: 'Em processamento',
-    pronto: 'Pronto',
-    cancelado: 'Cancelado'
-  }
-  return mapa[status] || status
 }
 
 // ⚡ Superadmin: excluir todos os pedidos
 async function excluirTodosPedidosSuperadmin() {
   try {
     await pedidoStore.excluirTodosPedidosSuperadmin()
-    alert('Todos os pedidos foram excluídos pelo superadmin!')
+    toast.success('🛑 Todos os pedidos foram excluídos pelo superadmin!')
   } catch (err) {
-    alert('Erro ao excluir todos os pedidos')
+    toast.error('❌ Erro ao excluir todos os pedidos')
   }
 }
 </script>
@@ -73,19 +52,19 @@ async function excluirTodosPedidosSuperadmin() {
     <ul v-if="!pedidoStore.loading && pedidoStore.pedidos.length">
       <li
         v-for="pedido in pedidoStore.pedidos"
-        :key="pedido._id || pedido.id"
+        :key="pedido._id"
         class="mb-4 border-b pb-4"
       >
         <strong>Pedido #{{ pedido.codigoCliente }}</strong>
 
         <p>
-          🍊 {{ getQuantidade(pedido, 1) }} |
-          🍇 {{ getQuantidade(pedido, 2) }} |
-          🍍 {{ getQuantidade(pedido, 3) }}
+          🍊 {{ pedidoStore.getQuantidade(pedido, 1) }} |
+          🍇 {{ pedidoStore.getQuantidade(pedido, 2) }} |
+          🍍 {{ pedidoStore.getQuantidade(pedido, 3) }}
         </p>
 
-        <p>Data: {{ formatarData(pedido.data) }}</p>
-        <p>Status: {{ formatarStatus(pedido.status) }}</p>
+        <p>Data: {{ pedidoStore.formatarData(pedido.data) }}</p>
+        <p>Status: {{ pedidoStore.formatarStatus(pedido.status) }}</p>
 
         <button
           v-if="pedido.status === 'iniciado' || pedido.status === 'em_processamento'"
@@ -104,7 +83,7 @@ async function excluirTodosPedidosSuperadmin() {
     </p>
 
     <!-- Superadmin: ação global -->
-    <div class="mt-6">
+    <div v-if="userStore.isSuperAdmin" class="mt-6"> <!-- ✅ só superadmin vê -->
       <button
         @click="excluirTodosPedidosSuperadmin"
         class="bg-black hover:bg-gray-800 text-white px-4 py-2 rounded"

@@ -1,11 +1,27 @@
+// 📂 src/views/Login.vue
 <template>
   <div class="login">
     <h1>Login</h1>
     <form @submit.prevent="login">
-      <input v-model="email" type="email" placeholder="E-mail" />
-      <input v-model="senha" type="password" placeholder="Senha" />
-      <button type="submit" :disabled="loading">{{ loading ? 'Entrando...' : 'Entrar' }}</button>
+      <input
+        v-model="email"
+        type="email"
+        placeholder="E-mail"
+        autocomplete="email"
+      />
+
+      <input
+        v-model="senha"
+        type="password"
+        placeholder="Senha"
+        autocomplete="current-password"
+      />
+
+      <button type="submit" :disabled="loading">
+        {{ loading ? 'Entrando...' : 'Entrar' }}
+      </button>
     </form>
+
     <p v-if="erro" style="color:red">{{ erro }}</p>
     <router-link to="/cadastro">Não tem conta? Cadastre-se</router-link>
   </div>

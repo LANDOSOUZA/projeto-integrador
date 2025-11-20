@@ -26,8 +26,8 @@ export const useProdutoStore = defineStore('produto', {
       this.error = null
       try {
         const { data } = await produtoService.listarProdutos()
-        // força sempre array
-        this.produtos = Array.isArray(data) ? data : (data.produtos || [])
+        // backend retorna { produtos: [...] }
+        this.produtos = data.produtos ?? []
         if (this.produtoSelecionado) {
           const existe = this.produtos.some(p => p._id === this.produtoSelecionado._id)
           if (!existe) this.produtoSelecionado = null
@@ -37,7 +37,8 @@ export const useProdutoStore = defineStore('produto', {
       } finally {
         this.loading = false
       }
-  },
+    },
+
 
 
     async detalharProduto(id) {
