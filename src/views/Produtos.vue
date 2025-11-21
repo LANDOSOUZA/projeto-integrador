@@ -2,9 +2,11 @@
 import { onMounted } from 'vue'
 import { useCarrinhoStore } from '../stores/carrinho'
 import { useProdutoStore } from '../stores/produto'
+import { useRouter } from 'vue-router'
 
 const carrinho = useCarrinhoStore()
 const produtoStore = useProdutoStore()
+const router = useRouter()
 
 onMounted(async () => {
   await produtoStore.listarProdutos()
@@ -13,7 +15,7 @@ onMounted(async () => {
 function adicionarAoCarrinho(produto) {
   if (carrinho.totalQuantidade < 3 && produto.status === 'ativo') {
     carrinho.adicionar({
-      id: produto._id,   // usa o id do backend
+      _id: produto._id,   // usa o id do backend
       nome: produto.nome,
       preco: produto.preco,
       quantidade: 1
@@ -21,6 +23,7 @@ function adicionarAoCarrinho(produto) {
     console.log(`✅ ${produto.nome} adicionado ao carrinho`)
   }
 }
+
 </script>
 
 <template>
@@ -61,18 +64,51 @@ function adicionarAoCarrinho(produto) {
           @click="adicionarAoCarrinho(produto)"
           :disabled="carrinho.totalQuantidade >= 3 || produto.status !== 'ativo'"
           class="mt-4 px-3 py-2 rounded text-white w-full"
-          :class="carrinho.totalQuantidade >= 3 || produto.status !== 'ativo'
-            ? 'bg-gray-400 cursor-not-allowed'
-            : 'bg-[#005CA9] hover:bg-[#0074C7]'"
-          :aria-label="`Adicionar ${produto.nome} ao carrinho`"
+          :class="carrinho.totalQuantidade >= 3
+            ? 'bg-green-600 hover:bg-green-700 cursor-not-allowed'
+            : produto.status !== 'ativo'
+              ? 'bg-gray-400 cursor-not-allowed'
+              : 'bg-[#005CA9] hover:bg-[#0074C7]'"
         >
           {{ carrinho.totalQuantidade >= 3
-            ? 'Limite atingido'
+            ? 'Produto selecionado'
             : produto.status !== 'ativo'
               ? 'Indisponível'
               : 'Adicionar ao carrinho' }}
         </button>
+
       </div>
+
+          <!-- Lista de produtos -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+      <div
+        v-for="produto in produtoStore.produtos"
+        :key="produto._id"
+        class="bg-white p-4 rounded shadow"
+      >
+        <!-- conteúdo do card -->
+      </div>
+    </div>
+
+    <!-- Botão fixo no rodapé -->
+    <div class="fixed bottom-4 left-0 right-0 flex justify-center">
+      <button 
+        v-if="carrinho.totalQuantidade > 0" 
+        @click="$router.push('/carrinho')"
+        class="px-6 py-3 bg-[#FF9800] text-white rounded-lg shadow-lg hover:bg-[#F57C00] transition font-bold animate-bounce"
+      >
+        🛒 Ir para o Carrinho
+      </button>
+
+      <button 
+        v-else
+        @click="$router.push('/login')"
+        class="px-6 py-3 bg-[#005CA9] text-white rounded-lg shadow-lg hover:bg-[#0074C7] transition font-bold animate-bounce"
+      >
+        🔑 Entrar para acessar o Carrinho
+      </button>
+    </div>
+
     </div>
   </div>
 </template>

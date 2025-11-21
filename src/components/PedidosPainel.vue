@@ -19,7 +19,6 @@ async function anteciparPedido(id) {
   try {
     const status = await pedidoStore.anteciparPedido(id)
     logs.value.push(`Pedido ${id} antecipado para "${status}"`)
-    // opcional: atualizar apenas o pedido no estado em vez de recarregar tudo
     await carregarPedidos()
   } catch {
     logs.value.push(`Erro ao antecipar pedido ${id}`)
@@ -33,6 +32,17 @@ async function cancelarPedido(id) {
     await carregarPedidos()
   } catch {
     logs.value.push(`Erro ao cancelar pedido ${id}`)
+  }
+}
+
+async function finalizarCompra(itens) {
+  logs.value.push('Finalizando compra...')
+  try {
+    const response = await pedidoStore.finalizarCompra(itens)
+    logs.value.push(response.mensagem || 'Compra finalizada com sucesso!')
+    await carregarPedidos()
+  } catch (err) {
+    logs.value.push(`Erro ao finalizar compra: ${err.message}`)
   }
 }
 
@@ -65,3 +75,63 @@ function getEmoji(nomeProduto) {
 
 onMounted(() => carregarPedidos())
 </script>
+
+<template>
+  <div class="p-4 bg-white rounded shadow mt-6">
+    <h2 class="text-xl font-bold text-[#005CA9] mb-4">🛒 Pedidos</h2>
+
+    <div v-if="erro" class="text-red-600 mb-2">{{ erro }}</div>
+
+    <table v-if="pedidoStore.pedidos.length" class="w-full border-collapse">
+      <thead>
+        <tr class="bg-gray-200">
+          <th class="p-2 text-left">Cliente</th>
+          <th class="p-2 text-left">Produtos</th>
+          <th class="p-2 text-left">Status</th>
+          <th class="p-2 text-left">Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="pedido in pedidoStore.pedidos" :key="pedido._id" class="border-b">
+          <td class="p-2">{{ pedido.clienteId?.nome }}</td>
+          <td class="p-2">
+            <ul>
+              <li v-for="item in pedido.itens" :key="item._id">
+                {{ getEmoji(item.produtoId?.nome) }} {{ item.produtoId?.nome }} — {{ item.quantidade }}
+              </li>
+            </ul>
+          </td>
+          <td class="p-2">{{ pedido.status }}</td>
+          <td class="p-2 flex gap-2">
+            <button @click="anteciparPedido(pedido._id)" class="bg-blue-500 text-white px-2 py-1 rounded">
+              ⏩ Antecipar
+            </button>
+            <button @click="cancelarPedido(pedido._id)" class="bg-red-600 text-white px-2 py-1 rounded">
+              🛑 Cancelar
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div v-else class="text-gray-600">Nenhum pedido encontrado.</div>
+
+    <!-- Ações globais -->
+    <div class="mt-4 flex gap-4">
+      <button @click="limparPedidos" class="bg-black text-white px-4 py-2 rounded">
+        🗑️ Limpar todos
+      </button>
+      <button @click="excluirPedidosCliente(prompt('Código do cliente'))" class="bg-gray-600 text-white px-4 py-2 rounded">
+        🗑️ Excluir por cliente
+      </button>
+    </div>
+
+    <!-- Logs -->
+    <div class="mt-4 bg-gray-100 p-2 rounded text-sm">
+      <h3 class="font-semibold mb-2">Logs:</h3>
+      <ul>
+        <li v-for="(log, i) in logs" :key="i">• {{ log }}</li>
+      </ul>
+    </div>
+  </div>
+</template>

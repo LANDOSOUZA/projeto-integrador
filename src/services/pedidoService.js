@@ -3,9 +3,16 @@ import authHeader from './authHeader'
 
 export default {
   // ============================
+  // 📌 Funcionalidades Gerais
+  // ============================
+  async liberarParaProducao(id) {
+    // Atalho para atualizar status para "em_processamento"
+    return api.put(`/pedido/admin/${id}/status`, { status: 'em_processamento' }, { headers: authHeader() })
+  },
+
+  // ============================
   // 📌 Funcionalidades do Cliente
   // ============================
-
   async cadastrarPedido(itens) {
     return api.post('/pedido', { itens }, { headers: authHeader() })
   },
@@ -22,8 +29,9 @@ export default {
     return api.patch(`/pedido/${id}/cancelar`, {}, { headers: authHeader() })
   },
 
-  async finalizarPedido(id) {
-    return api.patch(`/pedido/${id}/finalizar`, {}, { headers: authHeader() })
+  async finalizarCompra(itens) {
+    const { data } = await api.post('/pedido', { itens }, { headers: authHeader() })
+    return data
   },
 
   async limparPedidosCliente() {
@@ -41,19 +49,6 @@ export default {
   // ============================
   // 📌 Funcionalidades do Admin
   // ============================
-
-  async listarTodosPedidosAdmin() {
-    return api.get('/pedido/admin', { headers: authHeader() })
-  },
-
-  async liberarPedido(id) {
-    return api.patch(`/pedido/admin/liberar/${id}`, {}, { headers: authHeader() })
-  },
-
-  async excluirPedidosClienteAdmin(codigoCliente) {
-    return api.delete(`/pedido/admin/excluir/${codigoCliente}`, { headers: authHeader() })
-  },
-
   async limparPedidos() {
     return api.delete('/pedido/admin/limpar', { headers: authHeader() })
   },
@@ -62,23 +57,31 @@ export default {
     return api.get(`/pedido/admin/balancete?periodo=${periodo}`, { headers: authHeader() })
   },
 
+  async anteciparPedido(id) {
+    return api.put(`/pedido/admin/${id}/antecipar`, {}, { headers: authHeader() })
+  },
+
+  async atualizarStatusPedido(id, status) {
+    // Função genérica para atualizar status de qualquer pedido
+    return api.put(`/pedido/admin/${id}/status`, { status }, { headers: authHeader() })
+  },
+
   // ============================
   // 📌 Funcionalidades do Superadmin
   // ============================
-
   async listarTodosPedidosSuperadmin() {
-    return api.get('/pedido/superadmin', { headers: authHeader() })
+    // ⚠️ Precisa de rota no backend para listar todos pedidos
+    return api.get('/pedido/admin', { headers: authHeader() })
   },
 
   async excluirTodosPedidosSuperadmin() {
-    return api.delete('/pedido/superadmin/excluir-todos', { headers: authHeader() })
+    return api.delete('/pedido/admin/limpar', { headers: authHeader() })
   },
 
   // ============================
   // 📌 Funcionalidades do MES
   // ============================
-
   async reordenarFilaMES(pedidoId, dados) {
-    return api.put(`/pedido/mes/reordenar/${pedidoId}`, dados, { headers: authHeader() })
+    return api.put(`/pedido/mes/${pedidoId}/reordenar`, dados, { headers: authHeader() })
   }
 }

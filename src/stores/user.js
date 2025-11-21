@@ -14,30 +14,77 @@ export const useUserStore = defineStore('user', () => {
   }
   const user = ref(savedUser)
 
+  const usuarios = ref([])   // ✅ lista de usuários
   const error = ref(null)
 
   async function login(dados) {
     try {
-      const { data } = await clienteService.loginCliente(dados)
-      setToken(data.token)
-      setUser(data.user)
+      const res = await clienteService.loginCliente(dados)
+      setToken(res.token)
+      setUser(res.user)
       error.value = null
-      return data
+      return res
     } catch (err) {
-      error.value = err
+      error.value = err.response?.data || err
       throw err
     }
   }
 
   async function cadastrar(dados) {
     try {
-      const { data } = await clienteService.cadastrarCliente(dados)
-      setToken(data.token)
-      setUser(data.user)
+      const res = await clienteService.cadastrarCliente(dados)
+      setToken(res.token)
+      setUser(res.user)
       error.value = null
-      return data
+      return res
     } catch (err) {
-      error.value = err
+      error.value = err.response?.data || err
+      throw err
+    }
+  }
+
+  // 📋 Listar todos os usuários
+  async function listarUsuarios() {
+    try {
+      const res = await clienteService.listarUsuarios()
+      usuarios.value = res.usuarios || []   // esperado: { usuarios: [...] }
+      error.value = null
+      return usuarios.value
+    } catch (err) {
+      error.value = err.response?.data || err
+      throw err
+    }
+  }
+
+  // ⚡ Atualizar papel (role)
+  async function atualizarRole(id, role) {
+    try {
+      await clienteService.atualizarRole(id, role)
+      await listarUsuarios()
+    } catch (err) {
+      error.value = err.response?.data || err
+      throw err
+    }
+  }
+
+  // ⚡ Atualizar status
+  async function atualizarStatus(id, status) {
+    try {
+      await clienteService.atualizarStatus(id, status)
+      await listarUsuarios()
+    } catch (err) {
+      error.value = err.response?.data || err
+      throw err
+    }
+  }
+
+  // ❌ Excluir usuário
+  async function excluirUsuario(id) {
+    try {
+      await clienteService.excluirUsuario(id)
+      await listarUsuarios()
+    } catch (err) {
+      error.value = err.response?.data || err
       throw err
     }
   }
@@ -63,5 +110,11 @@ export const useUserStore = defineStore('user', () => {
   const isAdmin = computed(() => user.value?.status === 'admin' || user.value?.status === 'superadmin')
   const isSuperAdmin = computed(() => user.value?.status === 'superadmin')
 
-  return { token, user, error, login, cadastrar, setToken, setUser, logout, isAuthenticated, isAdmin, isSuperAdmin }
+  return {
+    token, user, usuarios, error,
+    login, cadastrar, listarUsuarios,
+    atualizarRole, atualizarStatus, excluirUsuario,
+    setToken, setUser, logout,
+    isAuthenticated, isAdmin, isSuperAdmin
+  }
 })
