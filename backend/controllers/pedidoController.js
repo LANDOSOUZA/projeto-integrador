@@ -128,6 +128,8 @@ const anteciparPedido = async (req, res) => {
 // 📌 Atualizar status do pedido (Admin → dispara CLP quando em_processamento)
 const atualizarStatusPedido = async (req, res) => {
   try {
+    console.log("➡️ Atualizar status pedido:", req.params.id, req.body.status)
+
     const { id } = req.params
     const novoStatus = req.body.status
 
@@ -136,7 +138,11 @@ const atualizarStatusPedido = async (req, res) => {
     }
 
     const pedido = await Pedido.findById(id)
-    if (!pedido) return res.status(404).json({ mensagem: 'Pedido não encontrado' })
+    if (!pedido) {
+      return res.status(404).json({ mensagem: 'Pedido não encontrado' })
+    }
+
+    console.log("✅ Pedido encontrado:", pedido._id, pedido.status)
 
     if ([STATUS.PRONTO, STATUS.CANCELADO].includes(pedido.status)) {
       return res.status(400).json({ mensagem: 'Não é possível alterar um pedido já finalizado ou cancelado' })
@@ -146,14 +152,18 @@ const atualizarStatusPedido = async (req, res) => {
     await pedido.save()
 
     if (novoStatus === STATUS.PROCESSANDO) {
-      const opcua = new OpcuaService()
-      await opcua.connect()
-      await opcua.escreverPedido({
-        op: pedido._id.toString(),
-        produto: pedido.itens[0].produtoId._id?.toString() ?? pedido.itens[0].produtoId,
-        quant: pedido.itens[0].quantidade
-      })
-      await opcua.disconnect()
+      if (process.env.USE_MOCK === 'true') {
+        console.log("⚙️ Mock CLP ativado — não enviando comando real")
+      } else {
+        const opcua = new OpcuaService()
+        await opcua.connect()
+        await opcua.escreverPedido({
+          op: pedido._id.toString(),
+          produto: pedido.itens[0].produtoId._id?.toString() ?? pedido.itens[0].produtoId,
+          quant: pedido.itens[0].quantidade
+        })
+        await opcua.disconnect()
+      }
     }
 
     res.json({ mensagem: 'Status atualizado com sucesso', pedido: pedido.toObject() })

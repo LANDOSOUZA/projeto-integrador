@@ -1,9 +1,14 @@
 <template>
   <div>
+    <!-- Navbar aparece em todas as rotas, exceto login/cadastro -->
     <Navbar v-if="exibirNavbar" />
+
+    <!-- Conteúdo principal -->
     <main class="max-w-4xl mx-auto p-4">
       <router-view />
     </main>
+
+    <!-- Rodapé -->
     <footer class="text-center p-4 text-sm text-gray-500">
       &copy; {{ new Date().getFullYear() }} Lando Sucos. Todos os direitos reservados.
     </footer>
@@ -16,8 +21,8 @@ import { useRoute } from 'vue-router'
 import { computed } from 'vue'
 
 const route = useRoute()
-const rotasSemNavbar = ['/login', '/login-cadastro']
 
-// ✅ Computed para reatividade
+// Rotas onde a Navbar não aparece
+const rotasSemNavbar = ['/login', '/login-cadastro']
 const exibirNavbar = computed(() => !rotasSemNavbar.includes(route.path))
 </script>

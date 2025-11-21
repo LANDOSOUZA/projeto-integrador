@@ -1,4 +1,4 @@
-// src/stores/pedidos.js
+// 📂 src/stores/pedidos.js
 import { defineStore } from 'pinia'
 import pedidoService from '../services/pedidoService'
 
@@ -7,8 +7,7 @@ export const usePedidosStore = defineStore('pedidos', {
     pedidos: [],
     historico: [],
     error: null,
-    loading: false,
-    produtos: []
+    loading: false
   }),
 
   actions: {
@@ -23,7 +22,6 @@ export const usePedidosStore = defineStore('pedidos', {
     // ============================
     // 📌 Funcionalidades do Cliente
     // ============================
-    
     async carregarPedidos() {
       this.loading = true
       this.error = null
@@ -36,18 +34,6 @@ export const usePedidosStore = defineStore('pedidos', {
         throw err
       } finally {
         this.loading = false
-      }
-    },
-
-    async listarProdutos() {
-      this.error = null
-      try {
-        const { data } = await pedidoService.listarProdutos()
-        this.produtos = Array.isArray(data.produtos) ? data.produtos : []
-        return this.produtos
-      } catch (err) {
-        this.setErro(err)
-        throw err
       }
     },
 
@@ -66,41 +52,10 @@ export const usePedidosStore = defineStore('pedidos', {
       }
     },
 
-    async cancelarPedido(id) {
-      this.error = null
-      const idx = this.pedidos.findIndex(p => p._id === id)
-      const snapshot = [...this.pedidos]
-
-      // atualização otimista
-      if (idx !== -1) {
-        this.pedidos[idx] = { ...this.pedidos[idx], status: 'cancelado' }
-        this.pedidos = [...this.pedidos]
-      }
-
-      try {
-        // chamada ao backend
-        const { data } = await pedidoService.cancelarPedido(id)
-
-        // atualiza com resposta real do backend
-        if (idx !== -1 && (data?.pedido || data)) {
-          this.pedidos[idx] = data.pedido ?? data
-          this.pedidos = [...this.pedidos]
-        }
-
-        return data?.pedido ?? data ?? null
-      } catch (err) {
-        // rollback em caso de erro
-        this.pedidos = snapshot
-        this.setErro(err)
-        throw err
-      }
-    },
-
-    // Cliente conclui a compra → cria pedido com status "iniciado"
     async finalizarCompra(itens) {
       this.error = null
       try {
-        const { data } = await pedidoService.cadastrarPedido(itens) 
+        const { data } = await pedidoService.cadastrarPedido(itens)
         if (data?.pedido) {
           this.pedidos = [...this.pedidos, data.pedido]
         }
@@ -113,7 +68,6 @@ export const usePedidosStore = defineStore('pedidos', {
         throw err
       }
     },
-
 
     async atualizarStatus(id, novoStatus) {
       this.error = null
@@ -146,46 +100,10 @@ export const usePedidosStore = defineStore('pedidos', {
     async limparPedidosCliente() {
       this.error = null
       try {
-        const { data } = await pedidoService.limparPedidosCliente()
+        await pedidoService.limparPedidosCliente()
         this.pedidos = []
         this.historico = []
-        return data ?? {}
-      } catch (err) {
-        this.setErro(err)
-        throw err
-      }
-    },
-
-    // ============================
-    // 🧩 Manipulação de itens do pedido
-    // ============================
-    async excluirItem(pedidoId, itemId) {
-      this.error = null
-      try {
-        const { data } = await pedidoService.excluirItem(pedidoId, itemId)
-        const idx = this.pedidos.findIndex(p => p._id === pedidoId)
-        if (idx !== -1 && data?.pedido) {
-          this.pedidos[idx] = data.pedido
-          this.pedidos = [...this.pedidos]
-        }
-        return data?.pedido ?? null
-      } catch (err) {
-        this.setErro(err)
-        throw err
-      }
-    },
-
-    async atualizarItem(pedidoId, itemId, dados) {
-      // dados pode ser { quantidade: number } ou { delta: number }
-      this.error = null
-      try {
-        const { data } = await pedidoService.atualizarItem(pedidoId, itemId, dados)
-        const idx = this.pedidos.findIndex(p => p._id === pedidoId)
-        if (idx !== -1 && data?.pedido) {
-          this.pedidos[idx] = data.pedido
-          this.pedidos = [...this.pedidos]
-        }
-        return data?.pedido ?? null
+        return {}
       } catch (err) {
         this.setErro(err)
         throw err
@@ -255,7 +173,26 @@ export const usePedidosStore = defineStore('pedidos', {
       try {
         const { data } = await pedidoService.listarTodosPedidosSuperadmin()
         this.pedidos = Array.isArray(data.pedidos) ? data.pedidos : []
+
+        // 🔎 Teste: logar no console
+        console.log('[STORE] pedidos carregados:', this.pedidos)
+
         return this.pedidos
+      } catch (err) {
+        this.setErro(err)
+        throw err
+      }
+    },
+
+    async liberarParaProducao(id) {
+      this.error = null
+      try {
+        const { data } = await pedidoService.liberarParaProducao(id)
+        const idx = this.pedidos.findIndex(p => p._id === id)
+        if (idx !== -1 && data?.pedido) {
+          this.pedidos[idx] = data.pedido
+        }
+        return data?.pedido ?? null
       } catch (err) {
         this.setErro(err)
         throw err
@@ -270,6 +207,30 @@ export const usePedidosStore = defineStore('pedidos', {
         this.historico = []
         return []
       } catch (err) {
+        this.setErro(err)
+        throw err
+      }
+    },
+
+    async cancelarPedido(id) {
+      this.error = null
+      const idx = this.pedidos.findIndex(p => p._id === id)
+      const snapshot = [...this.pedidos]
+
+      if (idx !== -1) {
+        this.pedidos[idx] = { ...this.pedidos[idx], status: 'cancelado' }
+        this.pedidos = [...this.pedidos]
+      }
+
+      try {
+        const { data } = await pedidoService.cancelarPedido(id)
+        if (idx !== -1 && data?.pedido) {
+          this.pedidos[idx] = data.pedido
+          this.pedidos = [...this.pedidos]
+        }
+        return data?.pedido ?? null
+      } catch (err) {
+        this.pedidos = snapshot
         this.setErro(err)
         throw err
       }
