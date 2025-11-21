@@ -1,3 +1,4 @@
+//backend/models/StatusModel.js
 class Status {
   constructor({
     geral,
@@ -13,19 +14,29 @@ class Status {
     mesPcsBoas,
     mesPcsRuins
   }) {
-    this.geral = geral;              // INT
-    this.falhaAtiva = falhaAtiva;    // BOOL
-    this.falhaAtivaCod = falhaAtivaCod; // INT
-    this.accSinc = accSinc;          // UDINT
-    this.opAtual = opAtual;          // DINT
-    this.estoqueProd = estoqueProd;  // array[3] int
-    this.mesProd = mesProd;          // INT
-    this.mesFalt = mesFalt;          // INT
-    this.mesTempInicio = mesTempInicio; // Date
-    this.mesTempFim = mesTempFim;    // Date
-    this.mesPcsBoas = mesPcsBoas;    // INT
-    this.mesPcsRuins = mesPcsRuins;  // INT
+    this.geral = geral              // INT
+    this.falhaAtiva = falhaAtiva    // BOOL
+    this.falhaAtivaCod = falhaAtivaCod // INT
+    this.accSinc = accSinc          // UDINT
+    this.opAtual = opAtual          // DINT
+
+    // Normaliza estoque em objeto legível
+    this.estoqueProd = {
+      limao: estoqueProd[0],
+      morango: estoqueProd[1],
+      laranja: estoqueProd[2]
+    }
+
+    this.mesProd = mesProd          // INT
+    this.mesFalt = mesFalt          // INT
+
+    // Datas estruturadas
+    this.mesTempInicio = mesTempInicio // {year, month, day, hour, minute, second}
+    this.mesTempFim = mesTempFim       // {year, month, day, hour, minute, second}
+
+    this.mesPcsBoas = mesPcsBoas    // INT
+    this.mesPcsRuins = mesPcsRuins  // INT
   }
 }
 
-module.exports = Status;
+module.exports = Status
