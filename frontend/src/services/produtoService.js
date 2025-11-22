@@ -9,7 +9,7 @@ export default {
 
   // Lista todos os produtos
   async listarProdutos() {
-    return api.get('/produto', { headers: authHeader() })
+    return api.get('/produto/', { headers: authHeader() })
   },
 
   // Detalha um produto específico

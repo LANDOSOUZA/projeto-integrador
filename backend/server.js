@@ -1,3 +1,4 @@
+//backend/server.js
 import 'dotenv/config'
 import express from 'express'
 import mongoose from 'mongoose'
@@ -14,12 +15,12 @@ import pedidoRoutes from './routes/pedido.js'
 import adminRoutes from './routes/admin.js'
 import statusRoutes from './routes/statusRouter.js'
 import relatorioRoutes from './routes/relatorioRouter.js'
-import clpRoutes from './routes/clpRouter.js' // ✅ nova rota CLP
 
 // Seeds
 import garantirProdutosBase from './utils/garantirProdutosBase.js'
 import criarAdminBase from './utils/criarAdminBase.js'
 import criarCountersBase from './utils/criarCountersBase.js'
+import initClpRouter from './routes/clpRouter.js' // Importa função que inicializa o router CLP
 
 const app = express()
 const PORT = process.env.PORT || 3000
@@ -41,8 +42,12 @@ app.use('/relatorios', autenticarToken, relatorioRoutes)
 // Rotas de admin
 app.use('/admin', autenticarToken, verificarAdmin, adminRoutes)
 
-// Rotas de controle CLP (SuperAdmin)
-app.use('/clp', autenticarToken, clpRoutes)
+// Rotas de controle CLP (SuperAdmin) — só se não estiver em mock
+if (process.env.USE_MOCK === 'false') {
+  app.use('/clp', autenticarToken, initClpRouter())
+} else {
+  console.log('⚠️ Rodando em modo mock, sem CLP')
+}
 
 // Conexão com MongoDB
 mongoose.connect(MONGO_URL)

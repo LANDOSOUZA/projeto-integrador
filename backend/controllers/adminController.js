@@ -1,3 +1,4 @@
+// backend/controllers/adminController.js
 const Usuario = require('../models/Cliente')
 
 // Criar novo admin ou superadmin

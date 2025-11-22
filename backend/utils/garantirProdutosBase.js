@@ -5,38 +5,45 @@ async function garantirProdutosBase() {
   const produtosBase = [
     {
       id: 1,
-      nome: "Suco de Abacaxi",
+      nome: "Suco de Laranja",
       peso: "500 ml",
-      descricao: "Produto produzido exclusivamente da fruta e não da folha do abacaxi.",
+      descricao: "Produto produzido exclusivamente da fruta e não da folha da laranjeira.",
       preco: 12.00,
       status: "ativo",
+      quantidade: 3, // 👈 estoque inicial
       criadoEm: new Date("2025-11-02T00:00:00Z")
     },
     {
       id: 2,
-      nome: "Suco de Laranja",
+      nome: "Suco de Limão",
       peso: "500 ml",
-      descricao: "Produto produzido exclusivamente da fruta e não da folha de laranja.",
+      descricao: "Produto produzido exclusivamente da fruta e não da folha do limoeiro.",
       preco: 12.00,
       status: "ativo",
+      quantidade: 3, // 👈 estoque inicial
       criadoEm: new Date("2025-11-02T00:00:00Z")
     },
     {
       id: 3,
-      nome: "Suco de Uva",
+      nome: "Suco de Morango",
       peso: "500 ml",
-      descricao: "Produto produzido exclusivamente da fruta e não da folha da videira.",
+      descricao: "Produto produzido exclusivamente da fruta e não da folha do morangueiro.",
       preco: 12.00,
       status: "ativo",
+      quantidade: 3, // 👈 estoque inicial
       criadoEm: new Date("2025-11-02T00:00:00Z")
     }
   ]
 
   for (const base of produtosBase) {
-    const existente = await Produto.findOne({ id: base.id })
+    // Checa pelo nome em vez de id
+    const existente = await Produto.findOne({ nome: base.nome })
     if (!existente) {
-      await Produto.create(base)
-      console.log(`✅ Produto base criado: ${base.nome} (Id ${base.id})`)
+      await Produto.create({
+        ...base,
+        criadoEm: new Date() // data/hora atual
+      })
+      console.log(`✅ Produto base criado: ${base.nome}`)
     }
   }
 }

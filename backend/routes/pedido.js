@@ -4,7 +4,7 @@ const router = express.Router();
 
 const autenticarToken = require('../middleware/auth');
 const verificarAdmin = require('../middleware/verificarAdmin');
-const pedidoController = require("../controllers/pedidoController");
+const pedidoController = require('../controllers/pedidoController');
 
 // ========================
 // Rotas de Admin
@@ -23,9 +23,10 @@ router.put("/admin/:id/status", autenticarToken, verificarAdmin, pedidoControlle
 router.put("/admin/:id/antecipar", autenticarToken, verificarAdmin, pedidoController.anteciparPedido);
 
 // Listar todos os pedidos (Admin)
-router.get("/admin", autenticarToken, verificarAdmin, pedidoController.listarTodosPedidosAdmin)
+router.get("/admin", autenticarToken, verificarAdmin, pedidoController.listarTodosPedidosAdmin);
 
-
+// Repor estoque (Admin/Superadmin)
+router.post("/admin/repor", autenticarToken, verificarAdmin, pedidoController.reporEstoque);
 
 // ========================
 // Rotas de Cliente
@@ -54,4 +55,16 @@ router.delete("/limpar", autenticarToken, pedidoController.limparPedidosCliente)
 // ========================
 router.put("/mes/:pedidoId/reordenar", autenticarToken, pedidoController.reordenarFilaMES);
 
+// Callback de produção MES (baixa estoque e atualiza status)
+router.post("/mes/callback", async (req, res) => {
+  try {
+    const { atualizarProducaoMES } = require('../services/mesService')
+    const resultado = await atualizarProducaoMES(req.body)
+    res.json(resultado)
+  } catch (err) {
+    res.status(500).json({ mensagem: 'Erro no callback MES', erro: err.message })
+  }
+})
+
 module.exports = router;
+

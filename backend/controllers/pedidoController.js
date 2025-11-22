@@ -1,4 +1,5 @@
 // 📂 src/controllers/pedidoController.js
+const Produto = require('../models/Produto')
 const Pedido = require('../models/Pedido')
 const Cliente = require('../models/Cliente')
 const Counter = require('../models/Counter')
@@ -6,11 +7,13 @@ const pedidoService = require('../services/pedidoService')
 const relatorioService = require('../services/relatorioService')
 const mesService = require('../services/mesService')
 const OpcuaService = require('../services/opcuaService')
+const { ListSearchIndexesCursor } = require('mongodb')
 
 // 🔖 Status padronizados
 const STATUS = {
   INICIADO: 'iniciado',
-  PROCESSANDO: 'em_processamento',
+  EM_PROCESSAMENTO: 'em_processamento',
+  PROCESSANDO: 'processando',
   PRONTO: 'pronto',
   CANCELADO: 'cancelado'
 }
@@ -43,13 +46,24 @@ const cadastrarPedido = async (req, res) => {
       return res.status(404).json({ mensagem: 'Cliente não encontrado' })
     }
 
-    // Limite de 3 pedidos ativos por cliente
-    const pedidosAtivos = await Pedido.countDocuments({
+    // Limite de 5 unidades em pedidos com status INICIADO
+    const pedidosIniciados = await Pedido.find({
       clienteId: cliente._id,
-      status: { $in: [STATUS.INICIADO, STATUS.PROCESSANDO] }
+      status: STATUS.INICIADO
     })
-    if (pedidosAtivos >= 3) {
-      return res.status(400).json({ mensagem: 'Limite de 3 pedidos ativos atingido' })
+
+    // somar todas as quantidades desses pedidos
+    const unidadesIniciadas = pedidosIniciados.reduce((acc, pedido) => {
+      return acc + pedido.itens.reduce((sum, item) => sum + item.quantidade, 0)
+    }, 0)
+
+    // somar também as unidades do novo pedido
+    const totalUnidades = unidadesIniciadas + total
+
+    if (totalUnidades > 5) {
+      return res.status(400).json({
+        mensagem: 'Limite de 5 unidades em pedidos iniciados atingido. Finalize ou aguarde produção antes de criar novos.'
+      })
     }
 
     // Validação de quantidade total
@@ -137,7 +151,7 @@ const atualizarStatusPedido = async (req, res) => {
       return res.status(400).json({ mensagem: 'Status inválido', permitidos: STATUS_PERMITIDOS })
     }
 
-    const pedido = await Pedido.findById(id)
+    const pedido = await Pedido.findById(id).populate('itens.produtoId')
     if (!pedido) {
       return res.status(404).json({ mensagem: 'Pedido não encontrado' })
     }
@@ -148,28 +162,79 @@ const atualizarStatusPedido = async (req, res) => {
       return res.status(400).json({ mensagem: 'Não é possível alterar um pedido já finalizado ou cancelado' })
     }
 
-    pedido.status = novoStatus
-    await pedido.save()
+    // 🚀 Se admin libera para produção
+    if (novoStatus === STATUS.EM_PROCESSAMENTO) {
+      let estoqueInsuficiente = false
 
-    if (novoStatus === STATUS.PROCESSANDO) {
-      if (process.env.USE_MOCK === 'true') {
-        console.log("⚙️ Mock CLP ativado — não enviando comando real")
-      } else {
-        const opcua = new OpcuaService()
-        await opcua.connect()
-        await opcua.escreverPedido({
-          op: pedido._id.toString(),
-          produto: pedido.itens[0].produtoId._id?.toString() ?? pedido.itens[0].produtoId,
-          quant: pedido.itens[0].quantidade
-        })
-        await opcua.disconnect()
+      for (const item of pedido.itens) {
+        const produto = await Produto.findById(item.produtoId._id)
+        if (!produto || produto.quantidade < item.quantidade) {
+          estoqueInsuficiente = true
+          break
+        }
       }
+
+      if (estoqueInsuficiente) {
+        pedido.status = STATUS.PROCESSANDO // travado aguardando insumo
+      } else {
+        pedido.status = STATUS.EM_PROCESSAMENTO
+
+        if (process.env.USE_MOCK === 'true') {
+          console.log("⚙️ Mock CLP ativado — não enviando comando real")
+        } else {
+          const opcua = new OpcuaService()
+          await opcua.connect()
+          // exemplo: enviar primeiro item ao CLP
+          await opcua.escreverPedido({
+            op: pedido._id.toString(),
+            produto: pedido.itens[0].produtoId._id.toString(),
+            quant: pedido.itens[0].quantidade
+          })
+          await opcua.disconnect()
+        }
+      }
+    } else {
+      pedido.status = novoStatus
     }
+
+    await pedido.save()
 
     res.json({ mensagem: 'Status atualizado com sucesso', pedido: pedido.toObject() })
   } catch (err) {
     console.error('❌ Erro ao atualizar status do pedido:', err)
     res.status(500).json({ mensagem: 'Erro ao atualizar status', erro: err.message })
+  }
+}
+
+const reporEstoque = async (req, res) => {
+  try {
+    const { produtoId, quantidade } = req.body
+
+    if (!produtoId || !quantidade || quantidade <= 0) {
+      return res.status(400).json({ mensagem: 'Produto e quantidade válidos são obrigatórios' })
+    }
+
+    const produto = await Produto.findById(produtoId)
+    if (!produto) {
+      return res.status(404).json({ mensagem: 'Produto não encontrado' })
+    }
+
+    produto.quantidade += quantidade
+    await produto.save()
+
+    // liberar pedidos travados
+    await Pedido.updateMany(
+      { status: STATUS.PROCESSANDO },
+      { status: STATUS.EM_PROCESSAMENTO }
+    )
+
+    res.json({
+      mensagem: 'Estoque reposto e pedidos liberados',
+      estoque: produto.toObject()
+    })
+  } catch (err) {
+    console.error('❌ Erro ao repor estoque:', err)
+    res.status(500).json({ mensagem: 'Erro ao repor estoque', erro: err.message })
   }
 }
 
@@ -225,7 +290,7 @@ const cancelarPedido = async (req, res) => {
         (pedido) => {
           if (pedido.status === STATUS.PRONTO) throw new Error('Não é possível cancelar um pedido já finalizado')
           if (pedido.status === STATUS.CANCELADO) throw new Error('O pedido já está cancelado')
-          if (pedido.status === STATUS.PROCESSANDO) throw new Error('Não é possível cancelar um pedido em produção')
+          if (pedido.status === STATUS.EM_PROCESSAMENTO) throw new Error('Não é possível cancelar um pedido em produção')
         }
       ]
     )
@@ -283,6 +348,7 @@ const excluirPedidosClienteAdmin = async (req, res) => {
     res.status(500).json({ mensagem: 'Erro ao excluir pedidos do cliente', erro: err.message })
   }
 }
+
 
 // 🧹 Limpar todos os pedidos (admin)
 const limparPedidos = async (req, res) => {
@@ -356,6 +422,7 @@ module.exports = {
   excluirPedidosClienteAdmin,
   limparPedidos,
   gerarBalancete,
+  reporEstoque,
 
   // MES
   reordenarFilaMES

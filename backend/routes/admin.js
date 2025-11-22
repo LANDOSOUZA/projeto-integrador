@@ -4,6 +4,8 @@ import { criarAdmin, listarAdmins, excluirAdmin } from '../controllers/adminCont
 import autenticarToken from '../middleware/auth.js'
 import verificarAdmin from '../middleware/verificarAdmin.js'
 import verificarSuperAdmin from '../middleware/verificarSuperAdmin.js'
+import { reporEstoque } from '../controllers/pedidoController.js'
+import { listarPedidos } from '../controllers/pedidoController.js'
 
 const router = express.Router()
 
@@ -15,6 +17,14 @@ router.post('/criar', verificarSuperAdmin, criarAdmin)           // Criar novo a
 router.delete('/excluir/:id', verificarSuperAdmin, excluirAdmin) // Excluir admin por ID
 
 // 📋 Rotas acessíveis por admin e superadmin
-router.get('/listar', verificarAdmin, listarAdmins)              // Listar todos os admins e superadmins
+router.get('/listar', verificarAdmin, listarAdmins) 
+
+// 🛠️ Rota para repor estoque (Admin)
+router.post('/repor', verificarAdmin, reporEstoque)
+
+// 📋 Rota para listar todos os pedidos (Admin/Superadmin)
+router.get('/pedidos', verificarAdmin, listarPedidos)
+
+// Listar todos os admins e superadmins
 
 export default router

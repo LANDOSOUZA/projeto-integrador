@@ -1,3 +1,4 @@
+// frontend/src/router/index.js
 import { createRouter, createWebHistory } from 'vue-router'
 import { useUserStore } from '../stores/user'
 
@@ -9,6 +10,8 @@ import Login from '../views/Login.vue'
 import AdminPrincipal from '../views/Admin.vue'
 import SuperAdminPrincipal from '../views/SuperAdmin.vue'
 import Cadastro from '../views/Cadastro.vue'
+import Estoque from '../views/Estoque.vue'
+
 
 
 const routes = [
@@ -19,7 +22,9 @@ const routes = [
   { path: '/login', component: Login },
   { path: '/cadastro', component: Cadastro },   // ✅ rota adicionada
   { path: '/admin', component: AdminPrincipal, meta: { requiresAuth: true, role: 'admin' } },
-  { path: '/superadmin', component: SuperAdminPrincipal, meta: { requiresAuth: true, role: 'superadmin' } }
+  { path: '/superadmin', component: SuperAdminPrincipal, meta: { requiresAuth: true, role: 'superadmin' } },
+  { path: '/estoque', component: Estoque, meta: { requiresAuth: true, role: 'admin' } }
+
 ]
 
 

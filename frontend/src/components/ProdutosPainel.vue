@@ -1,7 +1,10 @@
+// frontend/src/components/ProdutosPainel.vue
 <script setup>
 import { ref, onMounted } from 'vue'
+import { useProdutoStore } from '../stores/produto' 
 import { usePedidosStore } from '../stores/pedidos'
 
+const produtoStore = useProdutoStore()
 const pedidoStore = usePedidosStore()
 const carrinho = ref([])
 const logs = ref([])
@@ -28,7 +31,7 @@ async function finalizarCompra() {
 
 onMounted(async () => {
   // se houver rota de produtos, carregue aqui
-  await pedidoStore.listarProdutos()
+  await produtoStore.listarProdutos()
 })
 </script>
 
