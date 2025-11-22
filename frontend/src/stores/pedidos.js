@@ -22,6 +22,20 @@ export const usePedidosStore = defineStore('pedidos', {
     // ============================
     // 📌 Funcionalidades do Cliente
     // ============================
+    async carregarPedidos() {
+      this.loading = true
+      this.error = null
+      try {
+        const { data } = await pedidoService.listarPedidos()
+        this.pedidos = Array.isArray(data.pedidos) ? data.pedidos : []
+        return this.pedidos
+      } catch (err) {
+        this.setErro(err)
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
 
     async adicionarPedido(itens) {
       this.error = null
@@ -148,44 +162,6 @@ export const usePedidosStore = defineStore('pedidos', {
       } catch (err) {
         this.setErro(err)
         throw err
-      }
-    },
-    async reporEstoque(produtoId, quantidade = 3) {
-      this.error = null
-      try {
-        const { data } = await pedidoService.reporEstoque(produtoId, quantidade)
-        // opcional: recarregar pedidos para refletir status atualizado
-        await this.listarTodosPedidosAdmin()
-        return data
-      } catch (err) {
-        this.setErro(err)
-        throw err
-      }
-    },
-
-    // 📌 Funcionalidades do Cliente/Admin
-    async carregarPedidos() {
-      this.loading = true
-      this.error = null
-      try {
-        const userStatus = JSON.parse(localStorage.getItem('user'))?.status
-
-        let data
-        if (userStatus === 'admin' || userStatus === 'superadmin') {
-          const response = await pedidoService.listarTodosPedidosSuperadmin()
-          data = response.data
-        } else {
-          const response = await pedidoService.listarPedidos()
-          data = response.data
-        }
-
-        this.pedidos = Array.isArray(data.pedidos) ? data.pedidos : []
-        return this.pedidos
-      } catch (err) {
-        this.setErro(err)
-        throw err
-      } finally {
-        this.loading = false
       }
     },
 

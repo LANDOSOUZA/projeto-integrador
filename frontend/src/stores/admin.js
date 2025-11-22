@@ -1,4 +1,3 @@
-// frontend/src/stores/admin.js
 import { defineStore } from 'pinia'
 import adminService from '../services/adminService'
 

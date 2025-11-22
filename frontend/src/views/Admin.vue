@@ -1,15 +1,12 @@
+// 📂 src/views/Admin.vue
 <script setup>
-import { ref, onMounted } from 'vue'
 import PedidosPainel from '../components/PedidosPainel.vue'
 import ProdutosPainel from '../components/ProdutosPainel.vue'
 import UsuariosPainel from '../components/UsuariosPainel.vue'
 import { useToast } from 'vue-toastification'
 import clpService from '../services/clpService'   // ✅ novo service
-//import estoqueService from '../services/estoqueService'   // ✅ novo service
-import produtoService from '../services/produtoService'   // ✅ para listar produtos
 
 const toast = useToast()
-const produtos = ref([])
 
 // --- 🔌 Controle CLP ---
 async function iniciarProducao() {
@@ -38,25 +35,6 @@ async function abortarPedido() {
     toast.error('❌ Erro ao abortar pedido')
   }
 }
-
-async function reporEstoque(produtoId, quantidade) {
-  try {
-    await estoqueService.repor(produtoId, quantidade)
-    toast.success('📦 Estoque reposto com sucesso!')
-  } catch (err) {
-    toast.error('❌ Erro ao repor estoque')
-  }
-}
-
-// --- 📦 Carregar produtos dinamicamente ---
-onMounted(async () => {
-  try {
-    const { data } = await produtoService.listarProdutos()
-    produtos.value = data.produtos || []
-  } catch (err) {
-    toast.error('❌ Erro ao carregar produtos')
-  }
-})
 </script>
 
 <template>
@@ -67,21 +45,6 @@ onMounted(async () => {
     <PedidosPainel />
     <ProdutosPainel />
     <UsuariosPainel />
-
-    <!-- 📦 Estoque -->
-    <section class="mt-6">
-      <h2 class="text-xl font-semibold mb-4">📦 Estoque</h2>
-      <div class="flex gap-4 flex-wrap">
-        <button
-          v-for="produto in produtos"
-          :key="produto._id"
-          @click="reporEstoque(produto._id, 3)"
-          class="bg-blue-600 text-white px-4 py-2 rounded"
-        >
-          ➕ Repor {{ produto.nome }} (3)
-        </button>
-      </div>
-    </section>
 
     <!-- 🔌 Controle do CLP -->
     <section class="mt-6">

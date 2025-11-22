@@ -22,6 +22,11 @@ router.put("/admin/:id/status", autenticarToken, verificarAdmin, pedidoControlle
 // Antecipar pedido (Admin)
 router.put("/admin/:id/antecipar", autenticarToken, verificarAdmin, pedidoController.anteciparPedido);
 
+// Listar todos os pedidos (Admin)
+router.get("/admin", autenticarToken, verificarAdmin, pedidoController.listarTodosPedidosAdmin)
+
+
+
 // ========================
 // Rotas de Cliente
 // ========================

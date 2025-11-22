@@ -1,4 +1,3 @@
-// frontend/src/services/pedidoService.js
 import api from './api'
 import authHeader from './authHeader'
 
@@ -67,20 +66,16 @@ export default {
     return api.put(`/pedido/admin/${id}/status`, { status }, { headers: authHeader() })
   },
 
-  async reporEstoque(produtoId, quantidade = 3) {
-  return api.post('/admin/repor', { produtoId, quantidade }, { headers: authHeader() })
-  },
-
   // ============================
   // 📌 Funcionalidades do Superadmin
   // ============================
-  async listarTodosPedidosAdmin() {
+  async listarTodosPedidosSuperadmin() {
     // ⚠️ Precisa de rota no backend para listar todos pedidos
-    return api.get('/admin/pedidos', { headers: authHeader() })
+    return api.get('/pedido/admin', { headers: authHeader() })
   },
 
   async excluirTodosPedidosSuperadmin() {
-    return api.delete('/admin/pedidos/limpar', { headers: authHeader() })
+    return api.delete('/pedido/admin/limpar', { headers: authHeader() })
   },
 
   // ============================
