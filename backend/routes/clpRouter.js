@@ -1,53 +1,36 @@
-// 📂 backend/routes/clpRouter.js
-import express from 'express'
-import OpcuaService from '../services/opcuaService.js'
-import nodes from "../clp/config/opcuaNodes.js"
+// 📂 src/routes/opcua.js
+const express = require('express')
+const router = express.Router()
+const OpcuaService = require('../services/opcuaService')
 
-export default function initClpRouter() {
-  const router = express.Router()
+const opcua = new OpcuaService()
 
-  const opcua = new OpcuaService()
-  opcua.connect()
-
-  router.post('/iniciar', async (req, res) => {
-    try {
-      await opcua.iniciarProducao()
-      res.json({ message: 'Produção iniciada 🚀' })
-    } catch (err) {
-      res.status(500).json({ error: 'Erro ao iniciar produção', details: err.message })
-    }
-  })
-
-  // Resetar PLC
-  router.post('/reset', async (req, res) => {
-    try {
-      await opcua.resetPLC()
-      res.json({ message: 'PLC resetado 🔄' })
-    } catch (err) {
-      res.status(500).json({ error: 'Erro ao resetar PLC', details: err.message })
-    }
-  })
-
-  // Abortar pedido
-  router.post('/abortar', async (req, res) => {
-    try {
-      await opcua.abortarPedido()
-      res.json({ message: 'Pedido abortado 🛑' })
-    } catch (err) {
-      res.status(500).json({ error: 'Erro ao abortar pedido', details: err.message })
-    }
-  })
-
-  // Enviar pedido ao CLP
-  router.post('/pedido', async (req, res) => {
-    try {
-      const { op, produto, quant } = req.body
-      await opcua.escreverPedido({ op, produto, quant })
-      res.json({ message: '📤 Pedido enviado ao CLP', pedido: { op, produto, quant } })
-    } catch (err) {
-      res.status(500).json({ error: 'Erro ao enviar pedido', details: err.message })
-    }
-  })
-
-  return router
+// Função auxiliar para executar operações com conexão OPC UA
+async function executarOperacao(res, operacao, mensagemSucesso) {
+  try {
+    await opcua.connect()
+    await operacao()
+    res.status(200).json({ mensagem: mensagemSucesso })
+  } catch (err) {
+    res.status(500).json({ erro: 'Falha na operação OPC UA', detalhes: err.message })
+  } finally {
+    await opcua.disconnect()
+  }
 }
+
+// 🚀 Iniciar produção
+router.post('/iniciar', async (req, res) => {
+  await executarOperacao(res, () => opcua.iniciarProducao(), 'Produção iniciada 🚀')
+})
+
+// 🔄 Resetar PLC
+router.post('/reset', async (req, res) => {
+  await executarOperacao(res, () => opcua.resetPLC(), 'PLC resetado 🔄')
+})
+
+// 🛑 Abortar pedido
+router.post('/abortar', async (req, res) => {
+  await executarOperacao(res, () => opcua.abortarPedido(), 'Pedido abortado 🛑')
+})
+
+module.exports = router
