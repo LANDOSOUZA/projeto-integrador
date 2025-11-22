@@ -1,0 +1,44 @@
+[33mcommit e131cc3f87abd3b73faec268ad98d8b0356b84bf[m
+Author: LANDOSOUZA <lando-souza@hotmail.com>
+Date:   Fri Nov 21 09:31:04 2025 -0300
+
+    feat(v3): fluxo de pedidos com mock CLP e regras de negócio documentadas
+
+[1mdiff --git a/backend/backend-clp/regras-de-negocio.md b/backend/backend-clp/regras-de-negocio.md[m
+[1mnew file mode 100644[m
+[1mindex 0000000..cb4ab49[m
+[1m--- /dev/null[m
+[1m+++ b/backend/backend-clp/regras-de-negocio.md[m
+[36m@@ -0,0 +1,32 @@[m
+[32m+[m[32mEu acreditava que no nosso negócio não havia estoque, trabalhávamos sob demenda, conforme os pedidos iam surgindo, com até três unidades e com no máximo 3 pedidos com status "iniciado" por cliente. Porém, não entendi direito as explicações do Professor Luciano. De modo, que eu estava parcialmente correto. A regra é assim, O CLP tem estoque, sim. 9 peças ( 3 sucos de laranja - 3 sucos de limão e 3 sucos de morango). Acho que podemos limitar a três pedidos com status "iniciado" por cliente. Mas vamos ter que mudar a forma como o MES envia os pedidos para produção. Funciona assim: Vamos supor que o pedido Id 1 tem três sucos de limão, o MES envia para o CLP os dados do pedido Id 1 com os três itens de uma vez. No Id 2 temos 2 sucos de laranja e 1 de morango, então o MES passa para o CLP o Id com os 2 sucos de laranja e, depois, o Id 2 com o suco de morango. Se no Id 3 houver 1 suco de laranja, 1 suco de limão e 1 suco de morango, o MES passa para o CLP o Id 3 com 1 suco de laranja, depois o Id 3 com 1 suco de limão, e, por fim, o Id 3, novamente, com 1 suco de morango. Sempre, o CLP vai dando baixa no estoque, conforme vai produzindo. Veja, o pedido Id 2 tem 2 sucos de laranja, quando fez o primeiro suco o estoque baixou para 2 e, em seguida, para 1; no pedido Id 3 tem mais um suco de laranja, o estoque é atualizado para 0. Então, no próximo pedido de suco de laranja, o MES põe o pedido com status "processando", enquanto o admin "adiciona" (com um botão) matéria prima. Isso ocorre com os demais tipos de sucos, bem como quando há peça com defeito, falta de energia durante a fabricação de um suco etc. - quando se perde aquele produto fabricado. Deu para entender o fluxo?[m
+[32m+[m[32mSim, Lando, agora o fluxo ficou bem claro 👌. Vou organizar o que você explicou em etapas para deixar cristalino:[m
+[32m+[m
+[32m+[m[32m# 📜 Regras de Negócio – Sistema MES/CLP[m
+[32m+[m
+[32m+[m[32m## Estoque inicial[m
+[32m+[m[32m- CLP mantém estoque de 9 peças:[m
+[32m+[m[32m  - 3 sucos de laranja[m[41m  [m
+[32m+[m[32m  - 3 sucos de limão[m[41m  [m
+[32m+[m[32m  - 3 sucos de morango[m[41m  [m
+[32m+[m
+[32m+[m[32m## Limite de pedidos[m
+[32m+[m[32m- Máximo de **3 pedidos com status "iniciado"** por cliente.[m[41m  [m
+[32m+[m[32m- Cada pedido pode ter até **3 unidades**.[m
+[32m+[m
+[32m+[m[32m## Envio de pedidos do MES para o CLP[m
+[32m+[m[32m- MES envia os pedidos **quebrados por sabor**:[m
+[32m+[m[32m  - Pedido com itens de um único sabor → envia todos de uma vez.[m[41m  [m
+[32m+[m[32m  - Pedido com sabores diferentes → envia em lotes separados, um sabor por vez.[m[41m  [m
+[32m+[m
+[32m+[m[32m### Exemplos[m
+[32m+[m[32m- Pedido Id 1: 3 limões → envia Id 1 com 3 limões.[m[41m  [m
+[32m+[m[32m- Pedido Id 2: 2 laranjas + 1 morango → envia Id 2 com 2 laranjas, depois Id 2 com 1 morango.[m[41m  [m
+[32m+[m[32m- Pedido Id 3: 1 laranja + 1 limão + 1 morango → envia Id 3 três vezes, cada vez com um sabor.[m
+[32m+[m
+[32m+[m[32m## Atualização de estoque[m
+[32m+[m[32m- CLP dá baixa **a cada unidade produzida**.[m[41m  [m
+[32m+[m[32m- Se estoque chega a 0, próximo pedido fica em **status "processando"** até admin repor matéria-prima.[m
+[32m+[m
+[32m+[m[32m## Situações especiais[m
+[32m+[m[32m- Produto com defeito, falta de energia ou falha → peça perdida, estoque atualizado.[m[41m  [m
+[32m+[m[32m- Admin pode **adicionar matéria-prima** via botão para liberar produção novamente.[m
