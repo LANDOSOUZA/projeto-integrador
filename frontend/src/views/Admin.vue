@@ -5,7 +5,7 @@ import ProdutosPainel from '../components/ProdutosPainel.vue'
 import UsuariosPainel from '../components/UsuariosPainel.vue'
 import { useToast } from 'vue-toastification'
 import clpService from '../services/clpService'   // ✅ novo service
-import estoqueService from '../services/estoqueService'   // ✅ novo service
+//import estoqueService from '../services/estoqueService'   // ✅ novo service
 import produtoService from '../services/produtoService'   // ✅ para listar produtos
 
 const toast = useToast()
