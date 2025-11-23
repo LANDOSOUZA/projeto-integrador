@@ -34,7 +34,7 @@ const pedidoSchema = new mongoose.Schema({
 
   status: {
     type: String,
-    enum: ['iniciado', 'em_processamento', 'pronto', 'cancelado'],
+    enum: ['iniciado', 'em_processamento', 'pronto', 'cancelado', 'processando'],
     default: 'iniciado'
   },
 
@@ -49,5 +49,11 @@ const pedidoSchema = new mongoose.Schema({
 // Índices úteis para performance em consultas
 pedidoSchema.index({ codigoCliente: 1 });
 pedidoSchema.index({ data: -1 });
+
+// 🔄 Hook de auto-populate: garante que itens.produtoId venha sempre populado
+pedidoSchema.pre(/^find/, function(next) {
+  this.populate('itens.produtoId');
+  next();
+});
 
 module.exports = mongoose.model('Pedido', pedidoSchema);

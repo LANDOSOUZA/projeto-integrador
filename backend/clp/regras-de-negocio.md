@@ -4,6 +4,12 @@ Exemplo:
 
 Eu entro no site e escolho um produto --> clico em finalizar compra (nesse momento o pedido é gerado e ganha o status de "iniciado" - registrado no banco etc.) --> O admin visualiza meu pedido (essa parte, caso seja implantada um dia, é para ver forma de pagamento, frete etc.) e, muda o status para "em_processamento" ou cancela o pedido (critérios para isso não serão definidos nesse momento). Se o admin escolher o status "em_processamento" o pedido é enviado para o MES/CLP --> O MES CLP, após produzir os produtos (um a um; o backend manda Id 1 - tipo de produto 1 - quantidade 1;  Id 1 tipo de produto 1 - quantidade 1 etc.), muda o status do pedido para "pronto". No entanto, seguindo a lógica de ter 3 itens de cada tipo no estoque e dar baixa conforme vai produzindo, se o estoque 'acabar', muda o status do pedido para "processando". Nesse momento, o admin/superadmin vê o status, reabastece o estoque e o pedido muda novamente o status para "em_processamento". E o fluxo segue ...
 
+Já temos tudo pronto. Isso foi para você se lembrar do que estamos fazendo. Falta somente inserir os três botões referentes aos três sucos para repor três unidades quando o estoque chegar a 0 e o pedido do próximo cliente precisar de determinado item. Mexemos várias vezes no arquivo EstoquePainel para renderizar os botões na tela, já que foram criados, mas não dá certo. Talvez porque já haja botões naquele espaço. Veja o arquivo.
+
+Pronto. Quando o CLP colocar o status de "processando" num pedido, a palavra "processando" deve aparecer ali, Certo? Nesse momento deve ser enviado um sinal sonoro/texto - um alerta - para o admin e ele aperta o botão repor estoque. automaticamente o status muda de "iniciado" para "em_processamento". Fica bom assim? Em reposta, aparece uma mensagem - inserido três sucos de ...(laranja, limão ou morango) no estoque.
+
+A gente já fez tudo no backend e também no frontend, mas os botões não estão aparecendo. Depois que fizemos as criações no backend você pediu para ver o arquivo PedidosPainel.vue pata colocar o botão nao lado dos botões "Liberar para produção" e "Cancelar".
+
 🔎 Fluxo de estados do pedido
 Cliente finaliza compra
 

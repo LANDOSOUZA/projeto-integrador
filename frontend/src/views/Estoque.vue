@@ -1,4 +1,15 @@
 <template>
+  <!-- Componente desativado -->
+</template>
+
+<script>
+export default {
+  name: "EstoqueDesativado"
+}
+</script>
+
+<!--
+<template>
   <div class="estoque">
     <h2>Estoque de Insumos</h2>
     <table>
@@ -64,3 +75,4 @@ export default {
   font-weight: bold;
 }
 </style>
+-->

@@ -13,20 +13,23 @@ function validarCombinacao(contagem) {
 
 /**
  * Converte itens recebidos em objetos prontos para salvar no Pedido
+ * Faz uma única query para buscar todos os produtos e valida cada item
  */
 async function converterItens(itens) {
-  const itensConvertidos = []
-  for (const item of itens) {
-    const produto = await Produto.findById(item.produtoId)
+  const ids = itens.map(i => i.produtoId)
+  const produtos = await Produto.find({ _id: { $in: ids } })
+  const mapa = new Map(produtos.map(p => [String(p._id), p]))
+
+  return itens.map(i => {
+    const produto = mapa.get(String(i.produtoId))
     if (!produto) {
-      throw new Error(`Produto ${item.produtoId} não encontrado`)
+      throw new Error(`Produto ${i.produtoId} não encontrado`)
     }
-    itensConvertidos.push({
+    return {
       produtoId: produto._id,
-      quantidade: item.quantidade
-    })
-  }
-  return itensConvertidos
+      quantidade: i.quantidade
+    }
+  })
 }
 
 /**
@@ -55,7 +58,7 @@ async function atualizarStatusPedido(id, novoStatus, validacoes = []) {
     await opcua.abortarPedido()
   }
 
-  if (novoStatus === 'finalizado') {
+  if (novoStatus === 'pronto') {
     // fim da OP → resetar PLC
     await opcua.resetPLC()
   }

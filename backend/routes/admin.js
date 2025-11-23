@@ -1,9 +1,12 @@
-// 📂 src/routes/admin.js
-import express from 'express'
-import { criarAdmin, listarAdmins, excluirAdmin } from '../controllers/adminController.js'
-import autenticarToken from '../middleware/auth.js'
-import verificarAdmin from '../middleware/verificarAdmin.js'
-import verificarSuperAdmin from '../middleware/verificarSuperAdmin.js'
+const express = require('express')
+const { criarAdmin, listarAdmins, excluirAdmin } = require('../controllers/adminController.js')
+const estoqueController = require('../controllers/estoqueController.js')
+const autenticarToken = require('../middleware/auth.js')
+const verificarAdmin = require('../middleware/verificarAdmin.js')
+const verificarSuperAdmin = require('../middleware/verificarSuperAdmin.js')
+// Se tiver rotas de CLP, mantenha. Se não, pode remover:
+const clpController = require('../controllers/clpController')
+const { listarPedidosSuperadmin } = require('../controllers/pedidoController.js')
 
 const router = express.Router()
 
@@ -11,10 +14,20 @@ const router = express.Router()
 router.use(autenticarToken)
 
 // 👑 Rotas exclusivas do Superadmin
-router.post('/criar', verificarSuperAdmin, criarAdmin)           // Criar novo admin ou superadmin
-router.delete('/excluir/:id', verificarSuperAdmin, excluirAdmin) // Excluir admin por ID
+router.post('/criar', verificarSuperAdmin, criarAdmin)
+router.delete('/excluir/:id', verificarSuperAdmin, excluirAdmin)
+// 📋 Listar pedidos (superadmin)
+router.get('/pedidos', verificarSuperAdmin, listarPedidosSuperadmin)
 
 // 📋 Rotas acessíveis por admin e superadmin
-router.get('/listar', verificarAdmin, listarAdmins)              // Listar todos os admins e superadmins
+router.get('/listar', verificarAdmin, listarAdmins)
 
-export default router
+// 📦 Rotas de Estoque (unificada)
+router.post('/estoque/repor', verificarAdmin, estoqueController.reporEstoqueEPedido)
+
+// ⚙️ Rotas de CLP (se necessário)
+router.post('/clp/iniciar', verificarAdmin, clpController.iniciarCLP)
+router.post('/clp/parar', verificarAdmin, clpController.pararCLP)
+router.get('/clp/status', verificarAdmin, clpController.statusCLP)
+
+module.exports = router

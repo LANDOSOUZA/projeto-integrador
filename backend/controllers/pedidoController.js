@@ -10,9 +10,10 @@ const OpcuaService = require('../services/opcuaService')
 // 🔖 Status padronizados
 const STATUS = {
   INICIADO: 'iniciado',
-  PROCESSANDO: 'em_processamento',
+  EM_PROCESSAMENTO: 'em_processamento',
   PRONTO: 'pronto',
-  CANCELADO: 'cancelado'
+  CANCELADO: 'cancelado',
+  PROCESSANDO: 'processando'
 }
 const STATUS_PERMITIDOS = Object.values(STATUS)
 
@@ -46,7 +47,7 @@ const cadastrarPedido = async (req, res) => {
     // Limite de 3 pedidos ativos por cliente
     const pedidosAtivos = await Pedido.countDocuments({
       clienteId: cliente._id,
-      status: { $in: [STATUS.INICIADO, STATUS.PROCESSANDO] }
+      status: { $in: [STATUS.INICIADO, STATUS.EM_PROCESSAMENTO] }
     })
     if (pedidosAtivos >= 3) {
       return res.status(400).json({ mensagem: 'Limite de 3 pedidos ativos atingido' })
@@ -73,7 +74,12 @@ const cadastrarPedido = async (req, res) => {
 
     console.log('REQ BODY:', req.body)
 
-    const itensConvertidos = await pedidoService.converterItens(itens)
+    // 🔄 Converter itens para garantir que só o _id seja salvo
+    const itensConvertidos = itens.map(i => ({
+      produtoId: i.produtoId?._id || i.produtoId, // só o ID
+      quantidade: i.quantidade
+    }))
+
     const ordem = await gerarOrdemPedido()
     console.log('Ordem gerada:', ordem)
 
@@ -124,8 +130,6 @@ const anteciparPedido = async (req, res) => {
     res.status(500).json({ mensagem: 'Erro ao antecipar pedido', erro: err.message })
   }
 }
-
-// 📌 Atualizar status do pedido (Admin → dispara CLP quando em_processamento)
 const atualizarStatusPedido = async (req, res) => {
   try {
     console.log("➡️ Atualizar status pedido:", req.params.id, req.body.status)
@@ -137,7 +141,8 @@ const atualizarStatusPedido = async (req, res) => {
       return res.status(400).json({ mensagem: 'Status inválido', permitidos: STATUS_PERMITIDOS })
     }
 
-    const pedido = await Pedido.findById(id)
+    // busca e atualiza de uma vez, já populado pelo pre(/^find/)
+    let pedido = await Pedido.findById(id)
     if (!pedido) {
       return res.status(404).json({ mensagem: 'Pedido não encontrado' })
     }
@@ -151,7 +156,11 @@ const atualizarStatusPedido = async (req, res) => {
     pedido.status = novoStatus
     await pedido.save()
 
-    if (novoStatus === STATUS.PROCESSANDO) {
+    // reconsulta com populate automático
+    pedido = await Pedido.findById(pedido._id)
+
+    // integração com CLP
+    if (novoStatus === STATUS.EM_PROCESSAMENTO) {
       if (process.env.USE_MOCK === 'true') {
         console.log("⚙️ Mock CLP ativado — não enviando comando real")
       } else {
@@ -159,14 +168,14 @@ const atualizarStatusPedido = async (req, res) => {
         await opcua.connect()
         await opcua.escreverPedido({
           op: pedido._id.toString(),
-          produto: pedido.itens[0].produtoId._id?.toString() ?? pedido.itens[0].produtoId,
+          produto: pedido.itens[0].produtoId._id.toString(),
           quant: pedido.itens[0].quantidade
         })
         await opcua.disconnect()
       }
     }
 
-    res.json({ mensagem: 'Status atualizado com sucesso', pedido: pedido.toObject() })
+    res.json({ mensagem: 'Status atualizado com sucesso', pedido })
   } catch (err) {
     console.error('❌ Erro ao atualizar status do pedido:', err)
     res.status(500).json({ mensagem: 'Erro ao atualizar status', erro: err.message })
@@ -179,17 +188,48 @@ const listarPedidos = async (req, res) => {
     const isAdmin = req.user?.status === 'admin' || req.user?.status === 'superadmin'
     const filtro = isAdmin ? {} : { codigoCliente: req.user?.codigo }
 
-    const pedidos = await Pedido.find(filtro)
+    // hook pre(/^find/) já popula clienteId e itens.produtoId
+    const pedidos = await Pedido.find(filtro).sort({ ordem: 1 })
+
+    res.status(200).json({
+      mensagem: 'Pedidos listados com sucesso',
+      pedidos: pedidos.map(p => p.toObject())
+    })
+  } catch (err) {
+    console.error('❌ Erro ao listar pedidos:', err)
+    res.status(500).json({ mensagem: 'Erro ao listar pedidos', erro: err.message })
+  }
+}
+
+// 📋 Listar pedidos (admin)
+const listarPedidosAdmin = async (req, res) => {
+  try {
+    const pedidos = await Pedido.find()
       .sort({ ordem: 1 })
       .populate([
         { path: 'clienteId', select: 'codigo nome email status' },
         { path: 'itens.produtoId', select: 'codigo nome preco status' }
       ])
 
-    res.status(200).json({ mensagem: 'Pedidos listados com sucesso', pedidos: pedidos.map(p => p.toObject()) })
+    res.status(200).json({ pedidos: pedidos.map(p => p.toObject()) })
   } catch (err) {
-    console.error('❌ Erro ao listar pedidos:', err)
-    res.status(500).json({ mensagem: 'Erro ao listar pedidos', erro: err.message })
+    res.status(500).json({ mensagem: 'Erro ao listar pedidos admin', erro: err.message })
+  }
+}
+
+// 📋 Listar pedidos (superadmin)
+const listarPedidosSuperadmin = async (req, res) => {
+  try {
+    const pedidos = await Pedido.find()
+      .sort({ ordem: 1 })
+      .populate([
+        { path: 'clienteId', select: 'codigo nome email status' },
+        { path: 'itens.produtoId', select: 'codigo nome preco status' }
+      ])
+
+    res.status(200).json({ pedidos: pedidos.map(p => p.toObject()) })
+  } catch (err) {
+    res.status(500).json({ mensagem: 'Erro ao listar pedidos superadmin', erro: err.message })
   }
 }
 
@@ -225,7 +265,7 @@ const cancelarPedido = async (req, res) => {
         (pedido) => {
           if (pedido.status === STATUS.PRONTO) throw new Error('Não é possível cancelar um pedido já finalizado')
           if (pedido.status === STATUS.CANCELADO) throw new Error('O pedido já está cancelado')
-          if (pedido.status === STATUS.PROCESSANDO) throw new Error('Não é possível cancelar um pedido em produção')
+          if (pedido.status === STATUS.EM_PROCESSAMENTO) throw new Error('Não é possível cancelar um pedido em produção')
         }
       ]
     )
@@ -350,6 +390,8 @@ module.exports = {
   limparPedidosCliente,
 
   // Admin
+  listarPedidosAdmin,
+  listarPedidosSuperadmin,
   listarTodosPedidosAdmin,
   anteciparPedido,
   atualizarStatusPedido,

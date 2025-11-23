@@ -1,12 +1,15 @@
-// 📂 src/services/estoqueService.js
+// frontend/src/services/estoqueService.js
 import api from './api'
 
 export default {
   async listar() {
-    return api.get('/pedido/estoque')
+    // GET /admin/estoque → lista todos os produtos
+    return api.get('/admin/estoque')
   },
-  async repor(produtoId, quantidade = 3) {
-    return api.post('/admin/repor', { produtoId, quantidade })
+  async repor(produtoId, pedidoId) {
+    // POST /admin/estoque/repor → repõe estoque e atualiza pedido
+    return api.post('/admin/estoque/repor', { produtoId, pedidoId })
   }
 }
+
 

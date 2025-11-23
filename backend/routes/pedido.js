@@ -5,6 +5,7 @@ const router = express.Router();
 const autenticarToken = require('../middleware/auth');
 const verificarAdmin = require('../middleware/verificarAdmin');
 const pedidoController = require("../controllers/pedidoController");
+const estoqueController = require("../controllers/estoqueController"); // ← faltava isso
 
 // ========================
 // Rotas de Admin
@@ -23,9 +24,10 @@ router.put("/admin/:id/status", autenticarToken, verificarAdmin, pedidoControlle
 router.put("/admin/:id/antecipar", autenticarToken, verificarAdmin, pedidoController.anteciparPedido);
 
 // Listar todos os pedidos (Admin)
-router.get("/admin", autenticarToken, verificarAdmin, pedidoController.listarTodosPedidosAdmin)
+router.get("/admin", autenticarToken, verificarAdmin, pedidoController.listarTodosPedidosAdmin);
 
-
+// 🚀 Nova rota: repor estoque + atualizar pedido
+router.post("/admin/repor", autenticarToken, verificarAdmin, estoqueController.reporEstoqueEPedido)
 
 // ========================
 // Rotas de Cliente
