@@ -28,9 +28,13 @@ const pedidoSchema = new mongoose.Schema({
         type: Number, 
         required: true, 
         min: [1, 'Quantidade deve ser pelo menos 1'] 
-      }
+      },
+      precoUnitario: { type: Number },   // 👉 novo campo
+      subtotal: { type: Number }         // 👉 novo campo
     }
   ],
+
+  total: { type: Number },               // 👉 novo campo no nível do pedido
 
   status: {
     type: String,

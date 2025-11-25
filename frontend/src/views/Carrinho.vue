@@ -79,6 +79,16 @@ async function finalizarCompra() {
           >
             🗑️
           </button>
+
+          <!-- Mostrar preço unitário -->
+          <span class="ml-4 text-gray-700">
+            R$ {{ item.precoUnitario }}
+          </span>
+
+          <!-- Mostrar subtotal -->
+          <span class="ml-4 font-bold text-green-600">
+            Subtotal: R$ {{ item.subtotal }}
+          </span>
         </div>
       </div>
     </div>
@@ -90,6 +100,10 @@ async function finalizarCompra() {
       <p class="text-lg font-bold text-[#005CA9]">
         Valor total: R$ {{ carrinho.total.toFixed(2) }}
       </p>
+
+      <p class="mt-4 text-xl font-bold">
+        Total do pedido: R$ {{ pedido.total }}      </p>
+
 
       <div class="flex justify-end gap-2">
         <button 

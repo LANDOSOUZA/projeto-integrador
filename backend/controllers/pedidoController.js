@@ -6,6 +6,8 @@ const pedidoService = require('../services/pedidoService')
 const relatorioService = require('../services/relatorioService')
 const mesService = require('../services/mesService')
 const OpcuaService = require('../services/opcuaService')
+const Produto = require('../models/Produto')
+
 
 // 🔖 Status padronizados
 const STATUS = {
@@ -96,6 +98,9 @@ const cadastrarPedido = async (req, res) => {
     const ordem = await gerarOrdemPedido()
     console.log('Ordem gerada:', ordem)
 
+    console.log('-> itensComValores:', itensComValores)
+    console.log('-> valorTotal:', valorTotal)
+
     const novoPedido = new Pedido({
       clienteId: cliente._id,
       codigoCliente: cliente.codigo,
@@ -108,6 +113,8 @@ const cadastrarPedido = async (req, res) => {
 
     await novoPedido.save()
     console.log('Pedido salvo:', novoPedido)
+
+
 
     const pedidoPopulado = await novoPedido.populate([
       { path: 'clienteId', select: 'codigo nome email status' },
