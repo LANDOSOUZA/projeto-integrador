@@ -13,9 +13,11 @@ async function atualizarStatusCLP(req, res) {
     }
 
     // Atualiza status do pedido
-    pedido.status = status
+    console.log("🔔 AtualizarStatusCLP chamado para pedido:", pedidoId)
+    pedido.status = 'em_processamento'
     await pedido.save()
     pedido = await Pedido.findById(pedido._id) // hook já popula
+    console.log("📝 Pedido após reload:", pedido._id, pedido.status)
 
     // Busca o produto direto pelo _id
     const produto = await Produto.findById(itemId)
@@ -28,7 +30,7 @@ async function atualizarStatusCLP(req, res) {
     await produto.save()
 
     res.json({
-      message: `Pedido ${pedidoId} atualizado para ${pedido.status}. Inserido três sucos de ${produto.nome} no estoque.`,
+      mensagem: `Pedido ${pedidoId} atualizado para ${pedido.status}. Inserido três sucos de ${produto.nome} no estoque.`,
       pedido,
       produto
     })

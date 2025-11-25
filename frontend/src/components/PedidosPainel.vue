@@ -38,19 +38,26 @@ async function cancelarPedido(id) {
 
 async function reporEstoque(pedido, item) {
   try {
-    const produtoId = item.produtoId?._id   // 👈 pega o _id do item
+    const produtoId = item.produtoId?._id
     if (!produtoId) throw new Error('ProdutoId não encontrado no item')
 
     const response = await pedidoStore.reporEstoqueEPedido(pedido._id, produtoId)
+    console.log("🔎 Resposta do backend:", response)
     logs.value.push(response.message || 'Estoque reposto com sucesso')
+
+    // Atualiza o pedido localmente com o status retornado
+    const idx = pedidoStore.pedidos.findIndex(p => p._id === pedido._id)
+    if (idx !== -1 && response.pedido) {
+      pedidoStore.pedidos[idx] = { ...pedidoStore.pedidos[idx], ...response.pedido }
+    }
+
+    // Como garantia, recarregue a lista
     await carregarPedidos()
+
   } catch (err) {
     logs.value.push(`Erro ao repor estoque do pedido ${pedido._id}: ${err.message}`)
   }
 }
-
-
-
 
 async function finalizarCompra(itens) {
   logs.value.push('Finalizando compra...')
@@ -117,7 +124,7 @@ onMounted(() => carregarPedidos())
                 {{ getEmoji(item.produtoId?.nome) }} {{ item.produtoId?.nome }} — {{ item.quantidade }}
                 <button
                   v-if="pedido.status === 'processando'"
-                  @click="reporEstoque(pedido, item)"
+                  @click="$emit('reporEstoque', pedido, item)"
                   class="bg-green-600 text-white px-2 py-1 rounded ml-2"
                 >
                   🔄 Repor Estoque
@@ -125,14 +132,12 @@ onMounted(() => carregarPedidos())
               </li>
             </ul>
           </td>
-          <!-- status do pedido -->
           <td class="p-2">{{ pedido.status }}</td>
-          <!-- ações -->
           <td class="p-2 flex gap-2">
-            <button @click="anteciparPedido(pedido._id)" class="bg-blue-500 text-white px-2 py-1 rounded">
+            <button @click="$emit('anteciparPedido', pedido._id)" class="bg-blue-500 text-white px-2 py-1 rounded">
               ⏩ Antecipar
             </button>
-            <button @click="cancelarPedido(pedido._id)" class="bg-red-600 text-white px-2 py-1 rounded">
+            <button @click="$emit('cancelarPedido', pedido._id)" class="bg-red-600 text-white px-2 py-1 rounded">
               🛑 Cancelar
             </button>
           </td>
@@ -141,23 +146,6 @@ onMounted(() => carregarPedidos())
     </table>
 
     <div v-else class="text-gray-600">Nenhum pedido encontrado.</div>
-
-    <!-- Ações globais -->
-    <div class="mt-4 flex gap-4">
-      <button @click="limparPedidos" class="bg-black text-white px-4 py-2 rounded">
-        🗑️ Limpar todos
-      </button>
-      <button @click="excluirPedidosCliente(prompt('Código do cliente'))" class="bg-gray-600 text-white px-4 py-2 rounded">
-        🗑️ Excluir por cliente
-      </button>
-    </div>
-
-    <!-- Logs -->
-    <div class="mt-4 bg-gray-100 p-2 rounded text-sm">
-      <h3 class="font-semibold mb-2">Logs:</h3>
-      <ul>
-        <li v-for="(log, i) in logs" :key="i">• {{ log }}</li>
-      </ul>
-    </div>
   </div>
 </template>
+

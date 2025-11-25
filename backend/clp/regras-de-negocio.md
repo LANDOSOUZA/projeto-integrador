@@ -10,6 +10,8 @@ Pronto. Quando o CLP colocar o status de "processando" num pedido, a palavra "pr
 
 A gente já fez tudo no backend e também no frontend, mas os botões não estão aparecendo. Depois que fizemos as criações no backend você pediu para ver o arquivo PedidosPainel.vue pata colocar o botão nao lado dos botões "Liberar para produção" e "Cancelar".
 
+Na verdade, a ação de liberar o pedido para produção - 'em_processamento' - é do admin. Funciona assim, quando o cliente faz a compra o pedido ganha status de 'iniciado'. Após analisar o pedido em geral o admin o envia para a produção - o pedido ganha status de 'em_processamento'. Nesse momento o MES/CLP passa a fabricar o produto. Porém, se o estoque, que é de 3 peças por produto, acabar, o CLP muda o status do pedido para 'processando' e a produção para. Então, o admin avista a mudança do status do pedido e aperta o botão ReporEstoque - que insere 3 unidades do produto faltante no estoque. Até aí funciona. Mas, o botão ReporEstoque continua aparecendo - ele só surge quando o CLP muda o status do pedido para 'processando' - e o pedido continua com status de 'processando'. Isso deve mudar. Quando os três produtos forem inseridos no estoque, o botão ReporEstoque precisa sumir e o pedido ganhar status de 'em_processamento' para que a fabricação continue, o CLP volte a operar.
+
 🔎 Fluxo de estados do pedido
 Cliente finaliza compra
 

@@ -55,8 +55,15 @@ export const useProdutoStore = defineStore('produto', {
       this.error = null
       try {
         const { data } = await produtoService.cadastrarProduto(dados)
-        if (data && (data._id || data.id)) {
-          this.produtos.push(data)
+        if (data && data._id) {
+          const i = this.produtos.findIndex(p => p._id === data._id)
+          if (i !== -1) {
+            // já existe → atualiza
+            this.produtos[i] = data
+          } else {
+            // não existe → adiciona
+            this.produtos.push(data)
+          }
         } else {
           await this.listarProdutos()
         }

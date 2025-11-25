@@ -7,25 +7,21 @@ const pedidoStore = usePedidosStore()
 
 function aumentar(item) {
   if (carrinho.totalQuantidade < 3) {
+    // passa o objeto no formato esperado pelo store
     carrinho.adicionar({
-      produtoId: item._id,  
+      _id: item.produtoId,   // store compara com produto._id
       nome: item.nome,
-      preco: item.preco,
-      quantidade: 1
+      preco: item.preco
     })
   }
 }
 
 function diminuir(item) {
-  if (item.quantidade > 1) {
-    item.quantidade -= 1
-  } else {
-    carrinho.remover(item.produtoId) 
-  }
+  carrinho.remover(item.produtoId)
 }
 
 function removerItem(produtoId) {
-  carrinho.remover(produtoId)       
+  carrinho.remover(produtoId)
 }
 
 async function finalizarCompra() {
@@ -34,7 +30,12 @@ async function finalizarCompra() {
     return
   }
   try {
-    const response = await pedidoStore.finalizarCompra(carrinho.itens)
+    const response = await pedidoStore.finalizarCompra(
+      carrinho.itens.map(i => ({
+        produtoId: i.produtoId,
+        quantidade: i.quantidade
+      }))
+    )
     alert(response.mensagem || '✅ Pedido finalizado com sucesso!')
     carrinho.limpar()
   } catch (err) {
@@ -63,7 +64,7 @@ async function finalizarCompra() {
         </div>
 
         <div class="flex items-center gap-2">
-          <button @click="diminuir(item)" class="px-3 py-1 bg-gray-200 rounded">-</button>
+          <button @click="diminuir(item)" class="px-3 py-1 bg-gray-200 rounded">−</button>
           <span class="px-4 py-1 border rounded bg-gray-100 font-semibold">
             {{ item.quantidade }}
           </span>
@@ -72,7 +73,10 @@ async function finalizarCompra() {
             :disabled="carrinho.totalQuantidade >= 3"
             class="px-3 py-1 bg-gray-200 rounded disabled:opacity-50"
           >+</button>
-          <button @click="removerItem(item.produtoId)" class="px-3 py-1 bg-red-500 text-white rounded">
+          <button 
+            @click="removerItem(item.produtoId)" 
+            class="px-3 py-1 bg-red-500 text-white rounded"
+          >
             🗑️
           </button>
         </div>

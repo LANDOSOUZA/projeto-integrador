@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 
 export const useCarrinhoStore = defineStore('carrinho', {
   state: () => ({
-    itens: [] // cada item: { _id, nome, preco, quantidade }
+    itens: [] // cada item: { produtoId, nome, preco, quantidade }
   }),
 
   getters: {
@@ -16,22 +16,24 @@ export const useCarrinhoStore = defineStore('carrinho', {
 
   actions: {
     adicionar(produto) {
-      const existente = this.itens.find(item => item.produtoId === produto._id)
-      const totalAtual = this.totalQuantidade
-
-      if (totalAtual >= 3) return
-
-      if (existente) {
-        existente.quantidade++
+      const idx = this.itens.findIndex(item => item.produtoId === produto._id)
+      if (idx !== -1) {
+        const atualizado = {
+          ...this.itens[idx],
+          quantidade: this.itens[idx].quantidade + 1
+        }
+        this.itens.splice(idx, 1, atualizado)
+        this.itens = [...this.itens] // força reatividade
       } else {
         this.itens.push({
-          produtoId: produto._id,   // 👉 garante que o backend receba o ID certo
+          produtoId: produto._id,
           nome: produto.nome,
           preco: produto.preco,
           quantidade: 1
         })
       }
     },
+
 
     remover(produtoId) {
       const item = this.itens.find(i => i.produtoId === produtoId)

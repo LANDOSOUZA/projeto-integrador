@@ -80,13 +80,27 @@ const cadastrarPedido = async (req, res) => {
       quantidade: i.quantidade
     }))
 
+    // 🔎 Buscar preços dos produtos e calcular valores
+    const produtos = await Produto.find({ _id: { $in: itensConvertidos.map(i => i.produtoId) } })
+
+    const itensComValores = itensConvertidos.map(i => {
+      const produto = produtos.find(p => p._id.equals(i.produtoId))
+      const precoUnitario = produto ? produto.preco : 0
+      const subtotal = precoUnitario * i.quantidade
+      return { ...i, precoUnitario, subtotal }
+    })
+
+    const valorTotal = itensComValores.reduce((acc, i) => acc + i.subtotal, 0)
+
+
     const ordem = await gerarOrdemPedido()
     console.log('Ordem gerada:', ordem)
 
     const novoPedido = new Pedido({
       clienteId: cliente._id,
       codigoCliente: cliente.codigo,
-      itens: itensConvertidos,
+      itens: itensComValores,   // 👉 aqui usa os itens já com preço e subtotal
+      total: valorTotal,        // 👉 adiciona o campo total
       status: STATUS.INICIADO,
       data: new Date(),
       ordem

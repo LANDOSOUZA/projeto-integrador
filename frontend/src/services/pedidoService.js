@@ -6,7 +6,6 @@ export default {
   // 📌 Funcionalidades Gerais
   // ============================
   async liberarParaProducao(id) {
-    // Atalho para atualizar status para "em_processamento"
     return api.put(`/pedido/admin/${id}/status`, { status: 'em_processamento' }, { headers: authHeader() })
   },
 
@@ -62,25 +61,24 @@ export default {
   },
 
   async atualizarStatusPedido(id, status) {
-    // Função genérica para atualizar status de qualquer pedido
     return api.put(`/pedido/admin/${id}/status`, { status }, { headers: authHeader() })
   },
 
   async listarTodosPedidosAdmin() {
-  // rota para listar todos pedidos visíveis para admin
-  return api.get('/pedido/admin', { headers: authHeader() })
+    return api.get('/pedido/admin', { headers: authHeader() })
   },
 
   // ============================
   // 📌 Funcionalidades do Superadmin
   // ============================
   async listarTodosPedidosSuperadmin() {
-    // ⚠️ Precisa de rota no backend para listar todos pedidos
-    return api.get('/pedido/admin', { headers: authHeader() })
+    // reaproveita rota de admin
+    return this.listarTodosPedidosAdmin()
   },
 
   async excluirTodosPedidosSuperadmin() {
-    return api.get('/pedido/superadmin', { headers: authHeader() })
+    // reaproveita rota de admin
+    return this.limparPedidos()
   },
 
   // ============================

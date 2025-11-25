@@ -1,35 +1,67 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { usePedidosStore } from '../stores/pedidos'
 import { useProdutoStore } from '../stores/produto'
 
 const pedidoStore = usePedidosStore()
+const produtoStore = useProdutoStore()
+
 const carrinho = ref([])
 const logs = ref([])
 const carregandoFinalizar = ref(false)
-const produtoStore = useProdutoStore()
 
 function adicionarAoCarrinho(produto) {
-  carrinho.value.push({ produtoId: produto._id, quantidade: 1 })
-  logs.value.push(`Produto ${produto.nome} adicionado ao carrinho`)
+  const itemExistente = carrinho.value.find(i => i.produtoId === produto._id)
+  if (itemExistente) {
+    itemExistente.quantidade += 1
+  } else {
+    carrinho.value.push({
+      produtoId: produto._id,
+      nome: produto.nome,
+      preco: produto.preco,
+      quantidade: 1
+    })
+  }
 }
+
+function incrementarQuantidade(produtoId) {
+  const item = carrinho.value.find(i => i.produtoId === produtoId)
+  if (item) {
+    item.quantidade += 1
+  }
+}
+
+function removerDoCarrinho(produtoId) {
+  const idx = carrinho.value.findIndex(i => i.produtoId === produtoId)
+  if (idx >= 0) {
+    if (carrinho.value[idx].quantidade > 1) {
+      carrinho.value[idx].quantidade -= 1
+    } else {
+      carrinho.value.splice(idx, 1)
+    }
+  }
+}
+
+const total = computed(() =>
+  carrinho.value.reduce((acc, i) => acc + (i.preco * i.quantidade), 0)
+)
 
 async function finalizarCompra() {
   carregandoFinalizar.value = true
   logs.value.push('Finalizando compra...')
   try {
-    const response = await pedidoStore.finalizarCompra(carrinho.value)
-    logs.value.push(response.mensagem || 'Compra finalizada com sucesso!')
-    carrinho.value = [] // limpa carrinho após compra
+    const payload = carrinho.value.map(i => ({ produtoId: i.produtoId, quantidade: i.quantidade }))
+    const response = await pedidoStore.finalizarCompra(payload)
+    logs.value.push(response?.mensagem || 'Compra finalizada com sucesso!')
+    carrinho.value = []
   } catch (err) {
-    logs.value.push(`Erro ao finalizar compra: ${err.message}`)
+    logs.value.push(`Erro ao finalizar: ${err.message}`)
   } finally {
     carregandoFinalizar.value = false
   }
 }
 
-onMounted(async () => {
-  // se houver rota de produtos, carregue aqui
+onMounted(() => {
   produtoStore.listarProdutos()
 })
 </script>
@@ -39,7 +71,7 @@ onMounted(async () => {
     <h2 class="text-xl font-bold text-[#005CA9] mb-4">🛍️ Produtos</h2>
 
     <!-- Lista de produtos -->
-    <div v-for="produto in pedidoStore.produtos" :key="produto._id" class="border-b p-2 flex justify-between">
+    <div v-for="produto in produtoStore.produtos" :key="produto._id" class="border-b p-2 flex justify-between">
       <span>{{ produto.nome }} — R$ {{ produto.preco }}</span>
       <button @click="adicionarAoCarrinho(produto)" class="bg-blue-500 text-white px-2 py-1 rounded">
         ➕ Adicionar
@@ -48,17 +80,20 @@ onMounted(async () => {
 
     <!-- Carrinho -->
     <div class="mt-4">
-      <h3 class="font-semibold">Carrinho:</h3>
+      <h3 class="font-semibold">Carrinho</h3>
       <ul>
-        <li v-for="(item, i) in carrinho" :key="i">
-          {{ item.produtoId }} — {{ item.quantidade }}
+        <li v-for="item in carrinho" :key="item.produtoId" class="flex items-center gap-3">
+          <span>{{ item.nome }} — {{ item.quantidade }}x — R$ {{ item.preco }}</span>
+          <button @click="incrementarQuantidade(item.produtoId)" class="bg-blue-500 text-white px-2 rounded">+</button>
+          <button @click="removerDoCarrinho(item.produtoId)" class="bg-gray-300 text-black px-2 rounded">-</button>
         </li>
       </ul>
+      <div class="mt-2 font-semibold">Total: R$ {{ total }}</div>
     </div>
 
-    <!-- Botão Finalizar compra -->
-    <button 
-      @click="finalizarCompra" 
+    <!-- Botão Finalizar -->
+    <button
+      @click="finalizarCompra"
       class="bg-green-600 text-white px-4 py-2 rounded flex items-center justify-center mt-4"
       :disabled="carregandoFinalizar"
     >
@@ -74,11 +109,10 @@ onMounted(async () => {
 
     <!-- Logs -->
     <div class="mt-4 bg-gray-100 p-2 rounded text-sm">
-      <h3 class="font-semibold mb-2">Logs:</h3>
+      <h3 class="font-semibold mb-2">Logs</h3>
       <ul>
         <li v-for="(log, i) in logs" :key="i">• {{ log }}</li>
       </ul>
     </div>
   </div>
 </template>
-

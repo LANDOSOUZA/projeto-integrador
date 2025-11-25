@@ -1,5 +1,7 @@
 const Produto = require('../models/Produto.js')
-const Pedido = require('../models/Pedido.js')
+const STATUS = { EM_PROCESSAMENTO: 'em_processamento', PROCESSANDO: 'processando' }
+
+const { atualizarStatusPedido } = require('./pedidoController')
 
 async function reporEstoqueEPedido(req, res) {
   try {
@@ -11,15 +13,11 @@ async function reporEstoqueEPedido(req, res) {
     produto.quantidade += 3
     await produto.save()
 
-    // Atualiza status do pedido
-    const pedido = await Pedido.findById(pedidoId)
-    if (!pedido) return res.status(404).json({ error: 'Pedido não encontrado' })
-    pedido.status = 'em_processamento'
-    await pedido.save()
+    // Reaproveita a lógica de atualizar status
+    req.params.id = pedidoId
+    req.body.status = STATUS.EM_PROCESSAMENTO
+    return atualizarStatusPedido(req, res)
 
-    res.json({
-      message: `Inserido três sucos de ${produto.nome} no estoque. Pedido ${pedido._id} atualizado para em_processamento.`
-    })
   } catch (err) {
     res.status(500).json({ error: 'Erro ao repor estoque e atualizar pedido' })
   }
